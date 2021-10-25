@@ -103,18 +103,17 @@ socket.on('message', function (msg, info) {
                     //FOUND O STORE
                     let funcion = tokens[3];
                     switch(funcion){
-                        case 'found':{
-
-                        }
-                        case 'store':{
+                        case 'found':
+                            break;
+                        case 'store':
 							dht.agregar(objetoJSON.id,objetoJSON.filename,objetoJSON.filesize,objetoJSON.nodeIP,objetoJSON.nodePort);
                             console.log("GUARDÉ UN ARCHIVO A");
                             console.log("Hash: " + objetoJSON.id);
-                        }
+                            break;
                         //Dejamos CASE por si hay que agregar alguna función nueva para tracker.
-                        default:{
+                        default:
                             console.log('Función en tracker no encontrada');
-                        }
+                            break;
                     }
                 }
                 else
@@ -129,6 +128,7 @@ socket.on('message', function (msg, info) {
                     if (err)
                         socket.close('Error en tracker ' + idNodo + ' - enviando al siguiente.');
                 });
+                console.log("pasé el mensaje");
             }
             break;
         case 'scan': break;
