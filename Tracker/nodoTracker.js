@@ -124,7 +124,8 @@ socket.on('message', function (msg, info) {
             //ENVIAR A SIGUIENTE TRACKER
             else{
                 socket.send(msg, puertoSig, ipSig, (err) => {
-                    socket.close('Error en tracker ' + idNodo + ' - enviando al siguiente.');
+                    if (err)
+                        socket.close('Error en tracker ' + idNodo + ' - enviando al siguiente.');
                 });
             }
             break;
@@ -141,7 +142,8 @@ socket.on('message', function (msg, info) {
 				objetoJSON.body.trackerCount++;
 				objetoJSON.body.fileCount += dhtPropia.cantArchivos();
 				socket.send(JSON.stringify(objetoJSON), puertoSig, ipSig, (err) => {
-                    socket.close('Error en tracker ' + idNodo + ' - count.');
+                    if (err)
+                        socket.close('Error en tracker ' + idNodo + ' - count.');
                 });
 			}
 			else
@@ -151,14 +153,15 @@ socket.on('message', function (msg, info) {
 				{
 					banderaCount = false;
 					socket.send(msg, portOrigen, ipOrigen, (err) => {
-						socket.close('Error en tracker ' + idNodo + ' - count hacia servidor.');
+						if (err)
+                            socket.close('Error en tracker ' + idNodo + ' - count hacia servidor.');
 					});
 				}
 			}
             break;
         default:
             console.log('ERROR CASE TOKEN 0 SERVIDOR DE TRACKER');
-            console.log(objetoJSON);
+            console.log('Objeto JSON recibido: ' + objetoJSON);
             break;
     }
 });
