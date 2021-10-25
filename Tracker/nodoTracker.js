@@ -169,8 +169,11 @@ socket.on('message', function (msg, info) {
         case 'count':
 			if (!banderaCount)
 			{
-				if (objetoJSON.body.trackerCount == 0)
+				if (objetoJSON.body.trackerCount == 0) {
 					banderaCount = true;
+                    objetoJSON.originIP = info.address;
+                    objetoJSON.originPort = info.port;
+                }
 				objetoJSON.body.trackerCount++;
 				objetoJSON.body.fileCount += dhtPropia.cantArchivos();
 				socket.send(JSON.stringify(objetoJSON), puertoSig, ipSig, (err) => {
