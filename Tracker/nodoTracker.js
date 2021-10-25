@@ -122,7 +122,7 @@ socket.on('message', function (msg, info) {
                             console.log("GUARDÉ UN ARCHIVO A");
                             console.log("Hash: " + objetoJSON.body.id);
                             //GUARDA CON ESTO, CHEQUEAR INTERFAZ
-                            socket.send('STORE OK', objetoJSON.originPort, objetoJSON.originIP, (err) => {
+                            socket.send(JSON.stringify({info:"STORE OK"}), objetoJSON.originPort, objetoJSON.originIP, (err) => {
                                 if (err)
                                     socket.close('Error en tracker ' + idNodo + ' - enviando confirmación de Store.');
                             });
@@ -169,11 +169,8 @@ socket.on('message', function (msg, info) {
         case 'count':
 			if (!banderaCount)
 			{
-				if (objetoJSON.body.trackerCount == 0) {
+				if (objetoJSON.body.trackerCount == 0)
 					banderaCount = true;
-                    objetoJSON.originIP = info.address;
-                    objetoJSON.originPort = info.port;
-                }
 				objetoJSON.body.trackerCount++;
 				objetoJSON.body.fileCount += dhtPropia.cantArchivos();
 				socket.send(JSON.stringify(objetoJSON), puertoSig, ipSig, (err) => {
@@ -187,6 +184,7 @@ socket.on('message', function (msg, info) {
 				if (objetoJSON.body.trackerCount != 0)
 				{
 					banderaCount = false;
+                    console.log(objetoJSON.originPort,objetoJSON.originPort);
 					socket.send(msg, objetoJSON.originPort, objetoJSON.originIP,(err)=>{
 						if (err)
                             socket.close('Error en tracker ' + idNodo + ' - count hacia servidor.');
