@@ -84,24 +84,24 @@ function leerDatos(){
     puertoAnt = data.PORTAnteriorNodo;
     cantNodos = data.CantNodos;
     idNodo = data.IdNodo * 256/cantNodos - 1; //limite mayor
-}
+};
 
 //SERVIDOR
 
 //Printea mensaje recibido y muestra de donde viene.
 socket.on('message', function (msg, info) {
-    let objetoJSON = JSON.parse(msg);
+    let objetoJSON = JSON.parse(msg.toString());
     let tokens = objetoJSON.route.split('/');
     
-    switch (tokens[0]){
-        case 'file':{
+    switch (tokens[1]){
+        case 'file':
             //  hash: '0b5d2a750e5ca2ef76906f09f8fd7de17817db83',
-            let hash = tokens[1].substring(0,2);
+            let hash = tokens[2].substring(0,2);
             if (parseInt(hash,16)<=idNodo){
                 //caso de que le corresponde hacer algo con lo que viene
                 if (tokens.length()>2){
                     //FOUND O STORE
-                    let funcion = tokens[2];
+                    let funcion = tokens[3];
                     switch(funcion){
                         case 'found':{
 
@@ -127,22 +127,20 @@ socket.on('message', function (msg, info) {
                     socket.close('Error en tracker ' + idNodo + ' - enviando al siguiente.');
                 });
             }
-        }
-        case 'scan':{
-
-        }
-        case 'count':{
+            break;
+        case 'scan': break;
+        case 'count':
 			if (!banderaCount)
 			{
 				if (objetoJSON.body.trackerCount == 0)
 				{
 					banderaCount = true;
 					ipOrigen = info.address;
-					portOrigen = port.address;
+					portOrigen = info.port;
 				}
 				objetoJSON.body.trackerCount++;
-				objetoJSON.body.fileCount += dhtPropia.cantArchivos;
-				socket.send(objetoJSON.stringify(), puertoSig, ipSig, (err) => {
+				objetoJSON.body.fileCount += dhtPropia.cantArchivos();
+				socket.send(JSON.stringify(objetoJSON), puertoSig, ipSig, (err) => {
                     socket.close('Error en tracker ' + idNodo + ' - count.');
                 });
 			}
@@ -157,11 +155,15 @@ socket.on('message', function (msg, info) {
 					});
 				}
 			}
-        }
+            break;
         default:
             console.log('ERROR CASE TOKEN 0 SERVIDOR DE TRACKER');
+            console.log(objetoJSON);
+            break;
     }
 });
+
+leerDatos();
 
 socket.bind({
     port: 27015,
