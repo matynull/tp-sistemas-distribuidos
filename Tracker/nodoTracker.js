@@ -1,6 +1,6 @@
 let ipSig, puertoSig, ipAnt, puertoAnt,cantNodos,idNodo;
 let ipOrigen, portOrigen, banderaCount;
-const dhtPropia, dhtAnterior = [], dhtSiguiente = [];
+let dhtPropia, dhtAnterior = [], dhtSiguiente = [];
 
 //SHA1
 const crypto = require('crypto');
@@ -86,8 +86,6 @@ function leerDatos(){
     idNodo = data.IdNodo * 256/cantNodos - 1; //limite mayor
 }
 
-leerDatosIniciales();
-
 //SERVIDOR
 
 //Printea mensaje recibido y muestra de donde viene.
@@ -163,6 +161,11 @@ socket.on('message', function (msg, info) {
         default:
             console.log('ERROR CASE TOKEN 0 SERVIDOR DE TRACKER');
     }
+});
+
+socket.bind({
+    port: 27015,
+    exclusive: true
 });
 
 /*
