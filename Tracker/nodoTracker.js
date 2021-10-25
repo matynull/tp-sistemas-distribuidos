@@ -16,8 +16,8 @@ const dht = function() {
 	this.elementos = [];
 	this.agregar = function(hash,nombre,size,ip,puerto) {
 		let id = parseInt(hash.substring(0,2),16);
-		let indice = this.elementos.find(e => e.id == id);
-		if (indice === undefined)
+		let indice = this.elementos.findIndex(e => e.id == id);
+		if (indice == -1)
 		{
 			indice = this.elementos.length;
 			this.elementos.push(new elementoHash(hash));
@@ -34,8 +34,7 @@ const dht = function() {
 	};
 	this.cantArchivos = function() {
 		let cont = 0;
-		for (e in this.elementos)
-			cont += e.archivos.length;
+		this.elementos.forEach((e,i,array)=>{cont += e.archivos.length;});
 		return cont;
 	}
 }
@@ -99,16 +98,16 @@ socket.on('message', function (msg, info) {
             let hash = tokens[2].substring(0,2);
             if (parseInt(hash,16)<=idNodo){
                 //caso de que le corresponde hacer algo con lo que viene
-                if (tokens.length()>2){
+                if (tokens.length>2){
                     //FOUND O STORE
                     let funcion = tokens[3];
                     switch(funcion){
                         case 'found':
                             break;
                         case 'store':
-							dht.agregar(objetoJSON.id,objetoJSON.filename,objetoJSON.filesize,objetoJSON.nodeIP,objetoJSON.nodePort);
+							dhtPropia.agregar(objetoJSON.body.id,objetoJSON.body.filename,objetoJSON.body.filesize,objetoJSON.body.nodeIP,objetoJSON.body.nodePort);
                             console.log("GUARDÉ UN ARCHIVO A");
-                            console.log("Hash: " + objetoJSON.id);
+                            console.log("Hash: " + objetoJSON.body.id);
                             break;
                         //Dejamos CASE por si hay que agregar alguna función nueva para tracker.
                         default:
