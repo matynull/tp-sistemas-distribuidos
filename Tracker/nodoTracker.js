@@ -1,5 +1,6 @@
 let ipSig, puertoSig, ipAnt, puertoAnt,cantNodos,idNodo;
-const dhtPropia = [], dhtAnterior = [], dhtSiguiente = [];
+let ipOrigen, portOrigen, banderaCount;
+const dhtPropia = new dht(), dhtAnterior = [], dhtSiguiente = [];
 
 //SHA1
 const crypto = require('crypto');
@@ -9,22 +10,57 @@ let encriptado = crypto.createHash('sha1');
 const udp = require('dgram');
 const fs = require('fs');
 
-const server = udp.createSocket('udp4');
-const client = udp.createSocket('udp4');
+const socket = udp.createSocket('udp4');
 
+const dht = function() {
+	this.elementos = [];
+	this.agregar = function(hash,nombre,size,ip,puerto) {
+		let id = parseInt(hash.substring(0,2),16);
+		let indice = this.elementos.find(e => e.id == id);
+		if (indice === undefined)
+		{
+			indice = this.elementos.length;
+			this.elementos.push(new elementoHash(hash));
+			this.elementos[indice].agregarArchivo(hash,nombre,size,ip,puerto);
+			this.elementos.sort(function(a,b){
+                if (a.hash.substring(0,2) < b.hash.substring(0,2))
+                    return -1;
+                else 
+                    return 1;
+            });
+		}
+		else
+			this.elementos[indice].agregarArchivo(hash,nombre,size,ip,puerto);
+	};
+	this.cantArchivos = function() {
+		let cont = 0;
+		for (e in this.elementos)
+			cont += e.archivos.length;
+		return cont;
+	}
+}
 
 //listaNodosPares van a ser muchos
-const elementoHash = function(hash,ip,puerto) {
-    this.hash = hash;
-    this.listaSockets = [];
-    this.agregarSocket = function(ip,puerto){
-        this.listaSockets.push({
+const elementoHash = function(hash) {
+    this.id = parseInt(hash.substring(0,2),16);
+	this.archivos = [];
+    this.agregarArchivo = function(hash,nombre,size,ip,puerto){
+		this.archivos.push(new archivo(hash,nombre,size,ip,puerto);
+	}
+};
+
+const archivo = function(hash,nombre,size,ip,puerto) {
+	this.nombre = nombre;
+	this.size = size;
+	this.sockets = [];
+	this.agregarSocket = function(ip,puerto){
+        this.sockets.push({
             ip: ip,
             puerto:puerto
         })
     };
-    this.agregarSocket(ip,puerto);
-};
+	this.agregarSocket(ip,puerto);
+}
 
 /*
 //CREAR JSON 
@@ -49,10 +85,11 @@ function leerDatos(){
 }
 
 leerDatosIniciales();
+
 //SERVIDOR
 
 //Printea mensaje recibido y muestra de donde viene.
-server.on('message', function (msg, info) {
+socket.on('message', function (msg, info) {
     let objetoJSON = JSON.parse(msg);
     let tokens = objetoJSON.route.split('/');
     
@@ -61,7 +98,6 @@ server.on('message', function (msg, info) {
             //  hash: '0b5d2a750e5ca2ef76906f09f8fd7de17817db83',
             let hash = tokens[1].substring(0,2);
             if (parseInt(hash,16)<=idNodo){
-
                 //caso de que le corresponde hacer algo con lo que viene
                 if (tokens.length()>2){
                     //FOUND O STORE
@@ -71,19 +107,7 @@ server.on('message', function (msg, info) {
 
                         }
                         case 'store':{
-                            archivoNuevo = new elementoHash(objetoJSON.id,objetoJSON.nodeIP,objetoJSON.nodePort);
-                            
-                            //OPTIMIZAR ESTO
-                            dhtPropia.push(archivoNuevo);
-                            dhtPropia = dhtPropia.sort(function(a,b){
-                                if (a.hash.substring(0,2) < b.hash.substring(0,2))
-                                    return -1;
-                                else 
-                                    return 1;
-                            });
-
-
-
+							dht.agregar(objetoJSON.id,objetoJSON.filename,objetoJSON.filesize,objetoJSON.nodeIP,objetoJSON.nodePort);
                         }
                         //Dejamos CASE por si hay que agregar alguna función nueva para tracker.
                         default:{
@@ -99,83 +123,91 @@ server.on('message', function (msg, info) {
             }
             //ENVIAR A SIGUIENTE TRACKER
             else{
-                client.send(msg, puertoSig, ipSig, (err) => {
-                    client.close('Error en tracker ' + idNodo);
-                  });
+                socket.send(msg, puertoSig, ipSig, (err) => {
+                    socket.close('Error en tracker ' + idNodo + ' - enviando al siguiente.');
+                });
             }
         }
         case 'scan':{
 
         }
         case 'count':{
-            
+			if (!banderaCount)
+			{
+				if (objetoJSON.body.trackerCount == 0)
+				{
+					banderaCount = true;
+					ipOrigen = info.address;
+					portOrigen = port.address;
+				}
+				objetoJSON.body.trackerCount++;
+				objetoJSON.body.fileCount += dhtPropia.cantArchivos;
+				socket.send(objetoJSON.stringify(), puertoSig, ipSig, (err) => {
+                    socket.close('Error en tracker ' + idNodo + ' - count.');
+                });
+			}
+			else
+			{
+				//ERROR MITIGATION
+				if (objetoJSON.body.trackerCount != 0)
+				{
+					banderaCount = false;
+					socket.send(msg, portOrigen, ipOrigen, (err) => {
+						socket.close('Error en tracker ' + idNodo + ' - count hacia servidor.');
+					});
+				}
+			}
         }
         default:
             console.log('ERROR CASE TOKEN 0 SERVIDOR DE TRACKER');
     }
 });
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 /*
 // ESTAS COSAS PUEDEN LLEGAR A SERVIR
 
 //Printea IP y puerto que el server está escuchando (Se puede hacer con un callback en bind, cumplen la misma función)
-server.on('listening', () => {
-    const address = server.address;
+socket.on('listening', () => {
+    const address = socket.address;
     console.log('Servidor: Escuchando en IP:' + address.address + ', PORT:' + address.port+ '\n');
 });
 
 //Printea x error con su causa y cierra socket (CAMBIAR PARA RECUPERAR SOCKET EN CASO DE CAIDA) 
-server.on('error', function (err) {
+socket.on('error', function (err) {
     console.log('Servidor: Error:' + err.stack);
-    server.close();
+    socket.close();
 });
 
 //El servidor escucha en PORT e IP address
-server.bind({
+socket.bind({
     port: 27015,
     exclusive: true
 });
 
 
   /* ESTO ES PARA IDENTIFICAR DE DONDE VINO
-     const address = server.address;
+     const address = socket.address;
     console.log('Servidor: Escuchando en :' + address.address + ', PORT:' + address.port+ '\n');
     console.log('Servidor: Información de donde viene el mensaje. IP:' + info.address + ', PORT:' + info.port + '\n');
-    server.send();
+    socket.send();
     */
 
 
 //CLIENTE 
 // creo un server socket
 
-
+/*
 //Printea mensaje que recibe de servidor.
-client.on('message', function (msg, info) {
+socket.on('message', function (msg, info) {
     console.log('Cliente: Mensaje recibido del servidor: ' + msg.toString());
     console.log('Cliente: Información de donde viene el mensaje. IP:' + info.address + ', PORT:' + info.port + '\n');
 });
 
 const mensaje = Buffer.from('Prueba de envio mensaje UDP');
-//Envia mensajes tanto a sockets conectados con client.connect como a los especificados en los parametros. 
+//Envia mensajes tanto a sockets conectados con socket.connect como a los especificados en los parametros. 
 //Parametros: 1.Mensaje seteado en buffer.from - 2.Puerto donde envio mensaje - 3.IP donde envio mensaje - 4.Callback por error. 
-client.send(mensaje, 27015, '190.245.254.237', (err) => {
-    client.close();
+socket.send(mensaje, 27015, '190.245.254.237', (err) => {
+    socket.close();
   });
 
 */
