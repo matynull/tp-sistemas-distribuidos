@@ -1,6 +1,6 @@
 let ipSig, puertoSig, ipAnt, puertoAnt,cantNodos,idNodo;
 let ipOrigen, portOrigen, banderaCount;
-const dhtPropia = new dht(), dhtAnterior = [], dhtSiguiente = [];
+const dhtPropia, dhtAnterior = [], dhtSiguiente = [];
 
 //SHA1
 const crypto = require('crypto');
@@ -40,12 +40,14 @@ const dht = function() {
 	}
 }
 
+dhtPropia = new dht();
+
 //listaNodosPares van a ser muchos
 const elementoHash = function(hash) {
     this.id = parseInt(hash.substring(0,2),16);
 	this.archivos = [];
     this.agregarArchivo = function(hash,nombre,size,ip,puerto){
-		this.archivos.push(new archivo(hash,nombre,size,ip,puerto);
+		this.archivos.push(new archivo(hash,nombre,size,ip,puerto));
 	}
 };
 
