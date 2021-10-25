@@ -108,6 +108,8 @@ socket.on('message', function (msg, info) {
                         }
                         case 'store':{
 							dht.agregar(objetoJSON.id,objetoJSON.filename,objetoJSON.filesize,objetoJSON.nodeIP,objetoJSON.nodePort);
+                            console.log("GUARDÉ UN ARCHIVO A");
+                            console.log("Hash: " + objetoJSON.id);
                         }
                         //Dejamos CASE por si hay que agregar alguna función nueva para tracker.
                         default:{
