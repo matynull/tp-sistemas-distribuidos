@@ -56,7 +56,7 @@ const objetoCount = {
     }
 }
 
-const hash = encriptado.update('chotodemono' + '420').digest('hex');
+const hash = encriptado.update('chotodemono' + '3').digest('hex');
 
 const objetoStore = {
     route: '/file/'+hash+'/store',
@@ -65,7 +65,7 @@ const objetoStore = {
     body : {
         id: hash,
         filename: 'chotodemono',
-        filesize: 40,
+        filesize: 3,
         parIP: '190.245.254.237',
         parPort: 42069
     }

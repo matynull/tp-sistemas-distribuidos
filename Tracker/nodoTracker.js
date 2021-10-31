@@ -1,4 +1,4 @@
-let ipSig, puertoSig, ipAnt, puertoAnt,cantNodos,idNodo;
+let ipSig, puertoSig, ipAnt, puertoAnt,cantNodos,idNodo,idNodoAnt;
 let ipOrigen, portOrigen, banderaCount;
 let dhtPropia, dhtAnterior = [], dhtSiguiente = [];
 
@@ -24,9 +24,9 @@ const dht = function() {
 			this.elementos.push(new elementoHash(hash));
 			this.elementos[indice].agregarArchivo(hash,nombre,size,ip,puerto);
 			this.elementos.sort(function(a,b){
-                if (a !== undefined && b !== undefined && a.hash.substring(0,2) < b.hash.substring(0,2))
+                if (a.id < b.id)
                     return -1;
-                else 
+                else
                     return 1;
             });
 		}
@@ -98,6 +98,7 @@ function leerDatos(){
     puertoAnt = data.PORTAnteriorNodo;
     cantNodos = data.CantNodos;
     idNodo = data.IdNodo * 256/cantNodos - 1; //limite mayor
+    idNodoAnt = idNodo - 256/cantNodos; //limite menor
 };
 
 //SERVIDOR
@@ -112,7 +113,8 @@ socket.on('message', function (msg, info) {
     switch (tokens[1]){
         case 'file':
             let hash = tokens[2].substring(0,2);
-            if (parseInt(hash,16)<=idNodo){
+            let id = parseInt(hash,16);
+            if (id<=idNodo && id>idNodoAnt){
                 //caso de que le corresponde hacer algo con lo que viene
                 if (tokens.length>3){
                     //FOUND O STORE
