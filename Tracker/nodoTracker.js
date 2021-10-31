@@ -124,10 +124,11 @@ socket.on('message', function (msg, info) {
                             console.log("GUARDÉ UN ARCHIVO A");
                             console.log("Hash: " + objetoJSON.body.id);
                             //GUARDA CON ESTO, CHEQUEAR INTERFAZ
-                            socket.send('STORE OK', objetoJSON.originPort, objetoJSON.originIP, (err) => {
+                            /*socket.send('STORE OK', objetoJSON.originPort, objetoJSON.originIP, (err) => {
                                 if (err)
                                     socket.close('Error en tracker ' + idNodo + ' - enviando confirmación de Store.');
                             });
+                            */
                             break;
                         //Dejamos CASE por si hay que agregar alguna función nueva para tracker.
                         default:
@@ -153,9 +154,9 @@ socket.on('message', function (msg, info) {
                     if (dhtPropia.buscar(tokens[2]) == 1){
                         console.log("Encontro archivo hash: "+ tokens[2]);
                         console.log("ip: " +objetoJSON.originIP +" port: "+ objetoJSON.originPort);
-                        socket.send(JSON.stringify(objetoJSONFound), objetoJSON.originPort, objetoJSON.originIP, (err) => {
+                        socket.send("asd", objetoJSON.originPort, objetoJSON.originIP, (err) => {
                             if (err)
-                                socket.close('Error en tracker ' + idNodo + ' - enviando confirmación de Store.');
+                                socket.close('Error en tracker ' + idNodo + ' - enviando confirmación de Search.');
                             }
                         );
                         }
