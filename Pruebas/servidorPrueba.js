@@ -1,5 +1,4 @@
 //const express = require('express');
-console.log('un cambio');
 
 const udp = require('dgram');
 const { TIMEOUT } = require('dns');
@@ -11,29 +10,48 @@ const socket = udp.createSocket('udp4');
 const crypto = require('crypto');
 let encriptado = crypto.createHash('sha1');
 
+var puertoSV = 27016;
 
+//FORMA DEL FOUND
+/*
+{
+    messageId: str,
+    route: /file/{hash}/found,
+    body: {
+        id: str,
+        trackerIP: str,
+        trackerPort: int
+    }
+}
+*/
 
 socket.on('message', function (msg, info) {
+    console.log('asdasdasd');  
     let mensaje = JSON.parse(msg.toString());
-    if (mensaje.messageId !== undefined){
-        console.log('contador de trackers: ' + mensaje.body.trackerCount + ', archivos:' + mensaje.body.fileCount);
-        console.log('Cliente: Información de donde viene el mensaje. IP:' + info.address + ', PORT:' + info.port + '\n');
-    }
-    else{
+    let mensajeID = mensaje.messageId;
+    console.log(mensaje.route);
+      
+    if (mensajeID !== undefined)
+        if (mensajeID == 'idCount'){
+            console.log('Cantidad de trackers = ' + mensaje.body.trackerCount + ', archivos = ' + mensaje.body.fileCount);
+            console.log('Cliente: Información de donde viene el mensaje. IP:' + info.address + ', PORT:' + info.port + '\n');
+        }
+        else if (mensajeID == 'idSearch'){
+                console.log('Se encontró archivo con hash ' + mensaje.body.id);
+        }
+    else
+        //Si llega acá es STORE
         console.log('Se guardó el archivo');
-    }
 });
 
-
-
-socket.bind(27016);
+//socket.bind(27016);
 
 
 const objetoCount = {
     messageId: 'idCount',
     route : '/count',
     originIP: '0.0.0.0',
-    originPort: 27016,
+    originPort: puertoSV,
     body : {
         trackerCount: 0,
         fileCount : 0
@@ -47,7 +65,7 @@ console.log(hash);
 const objetoStore = {
     route: '/file/'+hash+'/store',
     originIP: '0.0.0.0',
-    originPort: 27016,
+    originPort: puertoSV,
     body : {
         id: hash,
         filename: 'chotodemono',
@@ -57,13 +75,35 @@ const objetoStore = {
     }
 }
 
+const objetoSearch = {
+    messageId: 'idSearch',
+    route: '/file/'+hash,
+    originIP: '0.0.0.0',
+    originPort: puertoSV
+}
+
+let portTracker,ipTracker;
+
+portTracker = 27015;
+ipTracker = '201.235.167.115';
 
 //STORE
-socket.send(JSON.stringify(objetoStore),27015,'201.235.167.115');
 
+
+
+socket.send(JSON.stringify(objetoSearch),portTracker,ipTracker);
+
+
+
+//socket.send(JSON.stringify(objetoStore),portTracker,ipTracker);
+
+
+
+/*
 setTimeout(() => {
-    socket.send(JSON.stringify(objetoCount),27015,'201.235.167.115');
+    socket.send(JSON.stringify(objetoCount),portTracker,ipTracker);
 }, 100);
+*/
 
 
 /*

@@ -106,7 +106,7 @@ function leerDatos(){
 socket.on('message', function (msg, info) {
     let objetoJSON = JSON.parse(msg.toString());
     let tokens = objetoJSON.route.split('/');
-    
+
     if (objetoJSON.originIP !== undefined && objetoJSON.originIP == '0.0.0.0')
         objetoJSON.originIP = info.address;
     switch (tokens[1]){
@@ -154,12 +154,12 @@ socket.on('message', function (msg, info) {
                     if (dhtPropia.buscar(tokens[2]) == 1){
                         console.log("Encontro archivo hash: "+ tokens[2]);
                         console.log("ip: " +objetoJSON.originIP +" port: "+ objetoJSON.originPort);
-                        socket.send("asd", objetoJSON.originPort, objetoJSON.originIP, (err) => {
+                        socket.send(JSON.stringify(objetoJSONFound), objetoJSON.originPort, objetoJSON.originIP, (err) => {
                             if (err)
                                 socket.close('Error en tracker ' + idNodo + ' - enviando confirmación de Search.');
                             }
                         );
-                        }
+                    }
                 }
                 //LOGICA DE ALMACENAR ARCHIVO
             }
