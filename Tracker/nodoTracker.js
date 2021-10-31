@@ -24,7 +24,7 @@ const dht = function() {
 			this.elementos.push(new elementoHash(hash));
 			this.elementos[indice].agregarArchivo(hash,nombre,size,ip,puerto);
 			this.elementos.sort(function(a,b){
-                if (a.hash.substring(0,2) < b.hash.substring(0,2))
+                if (a !== undefined && b !== undefined && a.hash.substring(0,2) < b.hash.substring(0,2))
                     return -1;
                 else 
                     return 1;
@@ -111,7 +111,6 @@ socket.on('message', function (msg, info) {
         objetoJSON.originIP = info.address;
     switch (tokens[1]){
         case 'file':
-            //  hash: '0b5d2a750e5ca2ef76906f09f8fd7de17817db83',
             let hash = tokens[2].substring(0,2);
             if (parseInt(hash,16)<=idNodo){
                 //caso de que le corresponde hacer algo con lo que viene

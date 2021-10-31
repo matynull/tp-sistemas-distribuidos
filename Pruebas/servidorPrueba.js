@@ -2,7 +2,7 @@
 
 const udp = require('dgram');
 const { TIMEOUT } = require('dns');
-const socket = udp.createSocket('udp4');
+let socket = udp.createSocket('udp4');
 
 
 
@@ -26,10 +26,8 @@ var puertoSV = 27016;
 */
 
 socket.on('message', function (msg, info) {
-    console.log('asdasdasd');  
     let mensaje = JSON.parse(msg.toString());
     let mensajeID = mensaje.messageId;
-    console.log(mensaje.route);
       
     if (mensajeID !== undefined)
         if (mensajeID == 'idCount'){
@@ -44,7 +42,7 @@ socket.on('message', function (msg, info) {
         console.log('Se guardó el archivo');
 });
 
-//socket.bind(27016);
+socket.bind(27016);
 
 
 const objetoCount = {
@@ -58,9 +56,7 @@ const objetoCount = {
     }
 }
 
-const hash = encriptado.update('chotodemono' + '40').digest('hex');
-console.log(hash);
-
+const hash = encriptado.update('chotodemono' + '420').digest('hex');
 
 const objetoStore = {
     route: '/file/'+hash+'/store',
@@ -85,26 +81,21 @@ const objetoSearch = {
 let portTracker,ipTracker;
 
 portTracker = 27015;
-ipTracker = '201.235.167.115';
+ipTracker = '190.245.254.237';
 
 //STORE
 
+//socket.send(JSON.stringify(objetoSearch),portTracker,ipTracker);
 
+socket.send(JSON.stringify(objetoStore),portTracker,ipTracker);
 
-socket.send(JSON.stringify(objetoSearch),portTracker,ipTracker);
-
-
-
-//socket.send(JSON.stringify(objetoStore),portTracker,ipTracker);
-
-
-
-/*
 setTimeout(() => {
     socket.send(JSON.stringify(objetoCount),portTracker,ipTracker);
 }, 100);
-*/
 
+/*
+
+*/
 
 /*
 const server = express();
