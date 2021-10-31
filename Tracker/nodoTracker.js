@@ -107,6 +107,8 @@ socket.on('message', function (msg, info) {
     let objetoJSON = JSON.parse(msg.toString());
     let tokens = objetoJSON.route.split('/');
     
+    if (objetoJSON.originIP !== undefined && objetoJSON.originIP == '0.0.0.0')
+        objetoJSON.originIP = info.address;
     switch (tokens[1]){
         case 'file':
             //  hash: '0b5d2a750e5ca2ef76906f09f8fd7de17817db83',
@@ -118,8 +120,6 @@ socket.on('message', function (msg, info) {
                     let funcion = tokens[3];
                     switch(funcion){
                         case 'store':
-                            if (objetoJSON.originIP == '0.0.0.0')
-                                objetoJSON.originIP = info.address;
 							dhtPropia.agregar(objetoJSON.body.id,objetoJSON.body.filename,objetoJSON.body.filesize,objetoJSON.body.nodeIP,objetoJSON.body.nodePort);
                             console.log("GUARDÉ UN ARCHIVO A");
                             console.log("Hash: " + objetoJSON.body.id);
@@ -136,6 +136,7 @@ socket.on('message', function (msg, info) {
                     }
                 }
                 else
+				//SEARCH
                 {
                     //GUARDA
                     //QUÉ HACER SI NO SE ENCONTRÓ?
