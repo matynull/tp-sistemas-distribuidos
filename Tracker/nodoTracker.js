@@ -150,18 +150,21 @@ socket.on('message', function (msg, info) {
                             trackerPort: socket.address().port
                         }
                     }
-                    if (dhtPropia.buscar(tokens[2]) == 1)
+                    if (dhtPropia.buscar(tokens[2]) == 1){
+                        console.log("Encontro archivo hash: "+ tokens[2]);
+                        console.log("ip: " +objetoJSON.originIP +" port: "+ objetoJSON.originPort);
                         socket.send(JSON.stringify(objetoJSONFound), objetoJSON.originPort, objetoJSON.originIP, (err) => {
                             if (err)
                                 socket.close('Error en tracker ' + idNodo + ' - enviando confirmación de Store.');
                             }
                         );
+                        }
                 }
                 //LOGICA DE ALMACENAR ARCHIVO
             }
             //ENVIAR A SIGUIENTE TRACKER
             else{
-                socket.send(msg, puertoSig, ipSig, (err) => {
+                socket.send(JSON.stringify(objetoJSON), puertoSig, ipSig, (err) => {
                     if (err)
                         socket.close('Error en tracker ' + idNodo + ' - enviando al siguiente.');
                 });
