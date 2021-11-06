@@ -6,11 +6,11 @@ function doupload() {
         "filename": file.name,
         "filesize": file.size,
         "nodeIP": '',
-        "nodePort": 8080
+        "nodePort": 27018
     })
     var xhr = new XMLHttpRequest();
     //open the request
-    xhr.open('POST', 'http://localhost:4200/file')
+    xhr.open('POST', 'http://190.245.254.237:27016/file')
     xhr.setRequestHeader("Content-Type", "application/json");
 
     //send the form data

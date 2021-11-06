@@ -1,17 +1,19 @@
 const express = require('express');
 const path = require('path');
+const net = require('net')
+const udp = require('dgram');
+const crypto = require('crypto');
 
 const server = express();
-
 server.use(express.json());
 server.use(express.static('public'));
 server.set('trust proxy', true);
 
 server.post('/file', (req, res) => {
-    console.log(req.body);
     let formulario = req.body;
-    formulario.nodeIP = req.ip;
-    console.log(req.headers);
+    let aux = req.ip.split(':');
+    formulario.nodeIP = aux[aux.length - 1];
+    store(formulario)
 });
 
 server.get('/', (req, res) => {
@@ -29,37 +31,78 @@ server.get('/file/:hash', (req, res) => {
 })
 
 
-server.listen(4200, () => {
-    console.log('Escuchando 4200');
+server.listen(27016, () => {
+    console.log('Escuchando 27016');
 })
 
+//--------------------------------------------------------- TRACKER MANAGEMENT ---------------------------------------------------------//
 
+let socket = udp.createSocket('udp4');
+const puertoSV = 27017
 
-/* SERVIDOR MANDA ESTO AL PRIMER TRACKER PARA HACER UN STORE DE UN ARCHIVO NUEVO.
+socket.on('message', function(msg, info) {
+    let mensaje = JSON.parse(msg.toString());
+    let mensajeID = mensaje.messageId;
 
-route
+    if (mensajeID !== undefined)
+        if (mensajeID == 'idCount') {
+            console.log('Cantidad de trackers = ' + mensaje.body.trackerCount + ', archivos = ' + mensaje.body.fileCount);
+            console.log('Cliente: Información de donde viene el mensaje. IP:' + info.address + ', PORT:' + info.port + '\n');
+        } else if (mensajeID == 'idSearch') {
+        console.log('Se encontró archivo con hash ' + mensaje.body.id);
+    } else
+    //Si llega acá es STORE
+        console.log('Se guardó el archivo');
+});
 
-{
-    route: /file/{hash}/store
+socket.bind(puertoSV);
+
+function store(formulario) {
+    let encriptado = crypto.createHash('sha1');
+    const hash = encriptado.update(formulario.filename + formulario.filesize).digest('hex');
+    const objetoStore = {
+        route: '/file/' + hash + '/store',
+        originIP: '0.0.0.0',
+        originPort: puertoSV,
+        body: {
+            id: hash,
+            filename: formulario.filename,
+            filesize: formulario.filesize,
+            parIP: formulario.nodeIP,
+            parPort: formulario.nodePort
+        }
+    }
+    console.log(objetoStore);
+}
+
+/*const objetoCount = {
+    messageId: 'idCount',
+    route: '/count',
+    originIP: '0.0.0.0',
+    originPort: puertoSV,
     body: {
-        id: str,
-        filename: str,
-        filesize: int,
-        nodeIP: str,
-        nodePort: int
+        trackerCount: 0,
+        fileCount: 0
     }
 }
-CASE:
 
-    ALTA: A TRACKER
-    POST /file/
+const objetoStore = {
+    route: '/file/' + hash + '/store',
+    originIP: '0.0.0.0',
+    originPort: puertoSV,
     body: {
-        id: str,
-        filename: str,
-        filesize: int,
-        nodeIP: str,
-        nodePort: int
+        id: hash,
+        filename: '',
+        filesize: 0,
+        parIP: '',
+        parPort: 0
     }
+}
 
-    LISTAR:
-    SOLICITUD DESCARGA: */
+const objetoSearch = {
+    messageId: 'idSearch',
+    route: '/file/' + hash,
+    originIP: '0.0.0.0',
+    originPort: puertoSV
+}
+*/
