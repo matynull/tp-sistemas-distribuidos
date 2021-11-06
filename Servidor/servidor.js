@@ -5,9 +5,13 @@ const server = express();
 
 server.use(express.json());
 server.use(express.static('public'));
+server.set('trust proxy', true);
 
 server.post('/file', (req, res) => {
     console.log(req.body);
+    let formulario = req.body;
+    formulario.nodeIP = req.ip;
+    console.log(req.headers);
 });
 
 server.get('/', (req, res) => {
