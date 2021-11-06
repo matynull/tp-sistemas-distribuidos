@@ -1,12 +1,18 @@
 const express = require('express');
+const path = require('path');
 
 const server = express();
 
 server.use(express.json());
+server.use(express.static('public'));
 
 server.post('/file', (req, res) => {
     console.log(req.body);
 });
+
+server.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, '/public', 'webclient.html'));
+})
 
 server.get('/file', (req, res) => {
     // buscar la lista completa de archivas y devolverla

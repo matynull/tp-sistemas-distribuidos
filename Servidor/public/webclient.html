@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>TP</title>
+    <style>
+        body {
+            background: rgba(112, 252, 99, 0.329);
+        }
+    </style>
+    <link rel="stylesheet" href="app.css">
+    <link rel="script" href="client.js">
+</head>
+
+<body>
+    <div>
+        <h1>Cargar Archivo</h1>
+        <form enctype="multipart/form-data" action="/file/" method="post">
+            <input id="file" type="file" />
+            <button onclick="doupload()" name="submit">Upload File</button>
+        </form>
+    </div>
+    <div>
+        <h1>Listado de Archivos</h1>
+    </div>
+    <div>
+        <h3>Descargar Archivo</h3>
+        <button type="submit">Descargar</button>
+    </div>
+    <script src="./client.js"></script>
+</body>
