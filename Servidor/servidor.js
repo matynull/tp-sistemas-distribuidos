@@ -31,12 +31,17 @@ server.get('/file', async (req, res) => {
     let idSave = msgID;
     await scan();
     index = respuestasID.findIndex((e) => e.id == idSave);
-    while (respuestasID[index].Response === undefined) {
-        setTimeout(()=>{}, 50);
-    }
+    while (respuestasID[index].Response === undefined)
+        await delay(50);
     console.log(respuestasID[index]);
     res.send(JSON.stringify(respuestasID[index].Response));
 });
+
+function delay(delay) {
+	return new Promise(resolve=>{
+		setTimeout(()=>{resolve();},delay);
+	});
+}
 
 server.get('/file/:hash', (req, res) => {
     //busca el archivo en los trackers y devuelve el .torrent con la lista de pares que tienen el archivo
@@ -54,6 +59,7 @@ let socket = udp.createSocket('udp4');
 const puertoSV = 27017
 
 socket.on('message', function (msg, info) {
+	//console.log("me llegó un mensaje");
     let mensaje = JSON.parse(msg.toString());
     let mensajeID = mensaje.messageId;
     let indexRespuesta = respuestasID.findIndex((e) => e.id == mensajeID);
@@ -100,7 +106,6 @@ function scan() {
         }), portTracker, ipTracker, function (err) {
             if (!err) {
                 respuestasID.push({ id: msgID });
-                console.log(msgID)
                 msgID++;
             }
             else

@@ -42,7 +42,7 @@ const dht = function() {
     this.archivos = function() {
         let retorno = [];
         this.elementos.forEach((e, i, array) => {
-            e.archivo.forEach((e1, i1, array1) => {
+            e.archivos.forEach((e1, i1, array1) => {
                 retorno.push({
                     "id": e1.hash,
                     "filename": e1.filename,
@@ -79,8 +79,8 @@ const elementoHash = function(hash) {
 
 const archivo = function(hash, nombre, size, ip, puerto) {
     this.hash = hash;
-    this.nombre = nombre;
-    this.size = size;
+    this.filename = nombre;
+    this.filesize = size;
     this.sockets = [];
     this.agregarSocket = function(ip, puerto) {
         this.sockets.push({
@@ -90,16 +90,6 @@ const archivo = function(hash, nombre, size, ip, puerto) {
     };
     this.agregarSocket(ip, puerto);
 }
-
-/*
-//CREAR JSON 
-const data = {
-    name: "John Doe",
-    age: 32,
-    title: "Vice President of JavaScript"
-  }
-  const jsonStr = JSON.stringify(data);
-*/
 
 //LEE JSON Y GUARDO EN VARIABLES. 
 function leerDatos() {
@@ -198,7 +188,11 @@ socket.on('message', function(msg, info) {
                     objetoJSON.originIP = info.address;
                 } else
                     objetoJSONRespuesta.body.files = objetoJSON.body.files;
-                objetoJSONRespuesta.body.files.concat(dhtPropia.archivos()); //concatena con la respuestae anterior
+				dhtPropia.archivos().forEach((e,i,array)=>{objetoJSONRespuesta.body.files.push(e)});
+				socket.send(JSON.stringify(objetoJSONRespuesta), objetoJSON.originPort, objetoJSON.originIP, (err) => {
+                    if (err)
+                        socket.close('Error en tracker ' + idNodo + ' - scan hacia siguiente.');
+                });
             } else {
                 msgID.splice(msgID.findIndex(e => e == objetoJSON.messageId), 1);
                 socket.send(msg, objetoJSON.originPort, objetoJSON.originIP, (err) => {
