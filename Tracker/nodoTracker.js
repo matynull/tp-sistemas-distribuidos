@@ -157,7 +157,7 @@ socket.on('message', function(msg, info) {
                     if (dhtPropia.buscar(tokens[2]) == 1) {
                         console.log("Encontro archivo hash: " + tokens[2]);
                         console.log("ip: " + objetoJSON.originIP + " port: " + objetoJSON.originPort);
-                        socket.send(JSON.stringify(objetoJSONFound), objetoJSON.originPort, objetoJSON.originIP, (err) => {
+                        socket.send(JSON.stringify(objetoJSONFound), puertoSig, ipSig, (err) => {
                             if (err)
                                 socket.close('Error en tracker ' + idNodo + ' - enviando confirmación de Search.');
                         });
