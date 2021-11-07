@@ -198,7 +198,7 @@ socket.on('message', function(msg, info) {
                     objetoJSON.originIP = info.address;
                 } else
                     objetoJSONRespuesta.body.files = objetoJSON.body.files;
-                objetoJSONRespuesta.body.files.concat(dhtPropia.archivos());
+                objetoJSONRespuesta.body.files.concat(dhtPropia.archivos()); //concatena con la respuestae anterior
             } else {
                 msgID.splice(msgID.findIndex(e => e == objetoJSON.messageId), 1);
                 socket.send(msg, objetoJSON.originPort, objetoJSON.originIP, (err) => {

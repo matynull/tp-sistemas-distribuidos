@@ -24,10 +24,18 @@ server.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, '/public', 'webclient.html'));
 })
 
+var respuestasID = []; // vector para ID-Respuesta 
+
 server.get('/file', (req, res) => {
     // buscar la lista completa de archivas y devolverla
-
-    res.send(scan());
+    let index;
+    let idSave = msgID;
+    scan();
+    index = respuestasID.findIndex((e) => e.id == idSave);
+    while (respuestasID[index].Response === undefined) {
+        setTimeout({}, 50);
+    }
+    res.send(JSON.stringify(respuestasID[index].Response));
 });
 
 server.get('/file/:hash', (req, res) => {
@@ -45,19 +53,16 @@ server.listen(27016, () => {
 let socket = udp.createSocket('udp4');
 const puertoSV = 27017
 
-socket.on('message', function(msg, info) {
+socket.on('message', function (msg, info) {
     let mensaje = JSON.parse(msg.toString());
     let mensajeID = mensaje.messageId;
-
-    if (mensajeID !== undefined)
-        if (mensajeID == 'idCount') {
-            console.log('Cantidad de trackers = ' + mensaje.body.trackerCount + ', archivos = ' + mensaje.body.fileCount);
-            console.log('Cliente: Información de donde viene el mensaje. IP:' + info.address + ', PORT:' + info.port + '\n');
-        } else if (mensajeID == 'idSearch') {
-        console.log('Se encontró archivo con hash ' + mensaje.body.id);
-    } else
-    //Si llega acá es STORE
-        console.log('Se guardó el archivo');
+    let indexRespuesta = respuestasID.findIndex((e) => e.id == mensajeID);
+    if (indexRespuesta != -1)
+        if (mensaje.route == '/scan')
+            respuestasID[indexRespuesta] = {
+                id: mensajeID,
+                Response: mensaje.body.files
+            }
 });
 
 socket.bind(puertoSV);
@@ -68,30 +73,35 @@ function store(formulario) {
     let encriptado = crypto.createHash('sha1');
     const hash = encriptado.update(formulario.filename + formulario.filesize).digest('hex');
     const objetoStore = {
-        "messageId": msgID,
-        "route": '/file/' + hash + '/store',
-        "originIP": '0.0.0.0',
-        "originPort": puertoSV,
-        "body": {
-            "id": hash,
-            "filename": formulario.filename,
-            "filesize": formulario.filesize,
-            "parIP": formulario.nodeIP,
-            "parPort": formulario.nodePort
+        messageId: msgID,
+        route: '/file/' + hash + '/store',
+        originIP: '0.0.0.0',
+        originPort: puertoSV,
+        body: {
+            id: hash,
+            filename: formulario.filename,
+            filesize: formulario.filesize,
+            parIP: formulario.nodeIP,
+            parPort: formulario.nodePort
         }
     }
     msgID++;
     console.log(objetoStore);
-    socket.send(JSON.stringify(objetoStore), portTracker, ipTracker)
+    socket.send(JSON.stringify(objetoStore), portTracker, ipTracker);
 }
 
 function scan() {
     socket.send(JSON.stringify({
-        "messageId": msgID,
-        "route": '/scan',
-        "originIP": '0.0.0.0',
-        "originPort": puertoSV,
-    }))
+        messageId: msgID,
+        route: '/scan',
+        originIP: '0.0.0.0',
+        originPort: puertoSV,
+    }), portTracker, ipTracker, function (err) {
+        if (!err)
+            respuestasID.push({ id: msgID });
+        else
+            console.log('error en send de scan');
+    })
     msgID++;
 }
 
