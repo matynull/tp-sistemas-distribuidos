@@ -3,17 +3,21 @@ const path = require('path');
 const net = require('net')
 const udp = require('dgram');
 const crypto = require('crypto');
+const { SourceMap } = require('module');
 
 const server = express();
 server.use(express.json());
 server.use(express.static('public'));
 server.set('trust proxy', true);
 
+let msgID = 0;
+
 server.post('/file', (req, res) => {
     let formulario = req.body;
     let aux = req.ip.split(':');
     formulario.nodeIP = aux[aux.length - 1];
     store(formulario)
+    console.log(scan());
 });
 
 server.get('/', (req, res) => {
@@ -22,7 +26,8 @@ server.get('/', (req, res) => {
 
 server.get('/file', (req, res) => {
     // buscar la lista completa de archivas y devolverla
-    res.send('Lista de archivos escaneados');
+
+    res.send(scan());
 });
 
 server.get('/file/:hash', (req, res) => {
@@ -56,23 +61,38 @@ socket.on('message', function(msg, info) {
 });
 
 socket.bind(puertoSV);
+const portTracker = 27015; //cfgear esto
+const ipTracker = '190.245.254.237';
 
 function store(formulario) {
     let encriptado = crypto.createHash('sha1');
     const hash = encriptado.update(formulario.filename + formulario.filesize).digest('hex');
     const objetoStore = {
-        route: '/file/' + hash + '/store',
-        originIP: '0.0.0.0',
-        originPort: puertoSV,
-        body: {
-            id: hash,
-            filename: formulario.filename,
-            filesize: formulario.filesize,
-            parIP: formulario.nodeIP,
-            parPort: formulario.nodePort
+        "messageId": msgID,
+        "route": '/file/' + hash + '/store',
+        "originIP": '0.0.0.0',
+        "originPort": puertoSV,
+        "body": {
+            "id": hash,
+            "filename": formulario.filename,
+            "filesize": formulario.filesize,
+            "parIP": formulario.nodeIP,
+            "parPort": formulario.nodePort
         }
     }
+    msgID++;
     console.log(objetoStore);
+    socket.send(JSON.stringify(objetoStore), portTracker, ipTracker)
+}
+
+function scan() {
+    socket.send(JSON.stringify({
+        "messageId": msgID,
+        "route": '/scan',
+        "originIP": '0.0.0.0',
+        "originPort": puertoSV,
+    }))
+    msgID++;
 }
 
 /*const objetoCount = {
@@ -83,19 +103,6 @@ function store(formulario) {
     body: {
         trackerCount: 0,
         fileCount: 0
-    }
-}
-
-const objetoStore = {
-    route: '/file/' + hash + '/store',
-    originIP: '0.0.0.0',
-    originPort: puertoSV,
-    body: {
-        id: hash,
-        filename: '',
-        filesize: 0,
-        parIP: '',
-        parPort: 0
     }
 }
 
