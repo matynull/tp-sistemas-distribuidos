@@ -17,7 +17,6 @@ server.post('/file', (req, res) => {
     let aux = req.ip.split(':');
     formulario.nodeIP = aux[aux.length - 1];
     store(formulario)
-    console.log(scan());
 });
 
 server.get('/', (req, res) => {
@@ -26,15 +25,16 @@ server.get('/', (req, res) => {
 
 var respuestasID = []; // vector para ID-Respuesta 
 
-server.get('/file', (req, res) => {
+server.get('/file', async (req, res) => {
     // buscar la lista completa de archivas y devolverla
     let index;
     let idSave = msgID;
-    scan();
+    await scan();
     index = respuestasID.findIndex((e) => e.id == idSave);
     while (respuestasID[index].Response === undefined) {
-        setTimeout({}, 50);
+        setTimeout(()=>{}, 50);
     }
+    console.log(respuestasID[index]);
     res.send(JSON.stringify(respuestasID[index].Response));
 });
 
@@ -67,7 +67,7 @@ socket.on('message', function (msg, info) {
 
 socket.bind(puertoSV);
 const portTracker = 27015; //cfgear esto
-const ipTracker = '190.245.254.237';
+const ipTracker = '201.235.167.115';
 
 function store(formulario) {
     let encriptado = crypto.createHash('sha1');
@@ -91,18 +91,23 @@ function store(formulario) {
 }
 
 function scan() {
-    socket.send(JSON.stringify({
-        messageId: msgID,
-        route: '/scan',
-        originIP: '0.0.0.0',
-        originPort: puertoSV,
-    }), portTracker, ipTracker, function (err) {
-        if (!err)
-            respuestasID.push({ id: msgID });
-        else
-            console.log('error en send de scan');
+    return new Promise((resolve)=>{
+        socket.send(JSON.stringify({
+            messageId: msgID,
+            route: '/scan',
+            originIP: '0.0.0.0',
+            originPort: puertoSV,
+        }), portTracker, ipTracker, function (err) {
+            if (!err) {
+                respuestasID.push({ id: msgID });
+                console.log(msgID)
+                msgID++;
+            }
+            else
+                console.log('error en send de scan');
+            resolve();
+        })
     })
-    msgID++;
 }
 
 /*const objetoCount = {
