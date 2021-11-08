@@ -37,7 +37,23 @@ function scan(){
 			archivos.forEach((e,i,array)=>{ //agrega los archivos a la lista en el html
 				let elemento = document.createElement("li");
 				elemento.setAttribute('id',e.filename);
-				elemento.appendChild(document.createTextNode(e.filename + " - " + e.filesize + " bytes"));
+                let aux = e.filesize;
+                if(aux>=1024){
+                    aux=aux/1024
+                    if(aux>=1024){
+                        aux=aux/1024
+                        if(aux>1024){
+                            aux=aux/1024
+                            elemento.appendChild(document.createTextNode(e.filename + " - " + Math.trunc(aux) + " GB"));
+                        }
+                        else
+                            elemento.appendChild(document.createTextNode(e.filename + " - " + Math.trunc(aux) + " MB"));
+                    }
+                    else
+                        elemento.appendChild(document.createTextNode(e.filename + " - " + Math.trunc(aux) + " kB"));
+                }
+                else
+				    elemento.appendChild(document.createTextNode(e.filename + " - " + aux + " bytes"));
 				listaArchivos.appendChild(elemento);
 			});
         }

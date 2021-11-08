@@ -167,3 +167,30 @@ textarea {
   margin-right: 75%;
 }
 
+.listaarchivos{
+  background-color: #247ba0;
+  margin-top: 2%;
+  margin-right: 2%;
+  margin-left: 2%;
+  display: grid;
+  border-bottom: 1px solid #000;
+}
+
+.listaarchivos h1{
+  padding: 1.5rem;
+}
+
+.listaarchivos ul{
+  list-style: none;
+  padding: 0
+}
+
+.listaarchivos ul li{
+  padding: 1rem;
+  border: 1px solid #000;
+  border-bottom: 0;
+}
+
+.listaarchivos ul li:nth-child(odd){
+  background-color: #70c1b3;
+}

@@ -8,7 +8,7 @@
     <title>TP</title>
     <link rel="stylesheet" href="app.css">
 </head>
-<body>
+<body onload="scan()">
     <header>
         <h1 class="sdtitle">Sistemas Distribuidos</h1>
         <nav>
@@ -19,10 +19,9 @@
             </ul>
         </nav>
     </header>
-    <div>
+    <div class="listaarchivos">
         <h1>Listado de Archivos</h1>
-        <button onclick="scan()" name="scan">Listar archivos</button>
-		<ol id="archivos"></ol>
+		<ul id="archivos"></ul>
         </form>
     </div>
     <div>
