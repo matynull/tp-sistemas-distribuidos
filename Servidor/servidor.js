@@ -20,7 +20,7 @@ server.post('/file', (req, res) => {
 });
 
 server.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, '/public', 'webclient.html'));
+    res.sendFile(path.join(__dirname, '/public', 'index.html'));
 })
 
 var respuestasID = []; // vector para ID-Respuesta 
