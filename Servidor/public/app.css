@@ -93,19 +93,34 @@ h2{
   background-color: #70c1b3;
 }
 
+.cargar{
+  background-color: #247ba0;
+  margin-top: 2%;
+  margin-left: 20%;
+  margin-right: 20%;
+  text-align: center;
+  height: 300px;
+}
+
+.cargar h1{
+  padding: 1.5rem;
+}
+
 form {
     /* Centrar el formulario en la página */
-    margin: 0 auto;
+    background-color: #70c1b3;
+    margin: auto;
     width: 400px;
     /* Esquema del formulario */
-    padding: 1em;
+    padding: 1.5rem;
     border: 1px solid #CCC;
     border-radius: 1em;
+    display: grid;
+    gap: 1rem;
   }
   
 ul {
     list-style: none;
-    padding: 0;
     margin: 0;
   }
   
@@ -147,15 +162,8 @@ textarea {
     /* Proporcionar espacio para escribir texto */
     height: 5em;
   }
-  
-.button {
-    /* Alinear los botones con los campos de texto */
-    padding-left: 90px; /* mismo tamaño que los elementos de la etiqueta */
-  }
-  
-button {
-    /* Este margen adicional representa aproximadamente el mismo espacio que el espacio
-       entre las etiquetas y sus campos de texto */
-    margin-left: .5em;
-  }
+   
+.cargar button{
+  margin-right: 75%;
+}
 
