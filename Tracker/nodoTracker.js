@@ -141,6 +141,7 @@ function leerCfg() {
 //Manejo de mensajes entrantes
 socket.on('message', function (msg, info) {
     let objetoJSON = JSON.parse(msg.toString());
+    let objetoJSONConfirmacion;
 
     //Si el mensaje tiene un campo originIP y no está correctamente definido, es su primer envío
     //Reemplazar IP por la de la conexión entrante
@@ -155,7 +156,7 @@ socket.on('message', function (msg, info) {
                 if (tokens.length > 3) { //Store o addPar
                     switch (tokens[3]) {
                         case 'store':
-                            let objetoJSONConfirmacion = {
+                            objetoJSONConfirmacion = {
                                 messageId: objetoJSON.messageId,
                                 route: '/file/' + tokens[2] + '/store',
                                 status: false
@@ -172,7 +173,7 @@ socket.on('message', function (msg, info) {
                             });
                             break;
                         case 'addPar':
-                            let objetoJSONConfirmacion = {
+                            objetoJSONConfirmacion = {
                                 messageId: objetoJSON.messageId,
                                 route: '/file/' + tokens[2] + '/addPar',
                                 status: false
