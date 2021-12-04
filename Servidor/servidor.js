@@ -13,11 +13,18 @@ server.set('trust proxy', true);
 
 let msgID = 0;
 
-server.post('/file', (req, res) => {
+server.post('/file', async (req, res) => {
+    let index;
+    let idSave = msgID;
     let formulario = req.body;
     let aux = req.ip.split(':');
     formulario.nodeIP = aux[aux.length - 1];
-    store(formulario)
+    await store(formulario);
+    index = respuestasID.findIndex((e) => e.id == idSave);
+    while (respuestasID[index].Response === undefined)
+        await delay(50);
+    res.send(JSON.stringify(respuestasID[index].Response)); //Respuesta al POST
+    //LUQUI AAAAAAAAAAA AGARRÁ ESE JSON Y HACE UN CARTELITO CON EL STATUS
 });
 
 server.get('/', (req, res) => {
@@ -26,7 +33,7 @@ server.get('/', (req, res) => {
 
 var respuestasID = []; // vector para ID-Respuesta 
 
-server.get('/file', async(req, res) => {
+server.get('/file', async (req, res) => {
     // buscar la lista completa de archivas y devolverla
     let index;
     let idSave = msgID;
@@ -43,7 +50,7 @@ function delay(delay) {
     });
 }
 
-server.get('/file/:hash', async(req, res) => {
+server.get('/file/:hash', async (req, res) => {
     //busca el archivo en los trackers y devuelve el .torrent con la lista de pares que tienen el archivo
     let index;
     let idSave = msgID;
@@ -64,9 +71,7 @@ server.listen(27016, () => {
 let socket = udp.createSocket('udp4');
 const puertoSV = 27017
 
-//GUARDA MANEJAR CONFIRMACION DE STORE
-
-socket.on('message', function(msg, info) {
+socket.on('message', function (msg, info) {
     //console.log("me llegó un mensaje");
     let mensaje = JSON.parse(msg.toString());
     let mensajeID = mensaje.messageId;
@@ -87,6 +92,14 @@ socket.on('message', function(msg, info) {
                         trackerPort: info.port
                     }
                 }
+            else if (mensaje.route.includes('/store')) { //Confirmación de Store
+                //LUQUI HACE UN CARTELITO EN LA PÁGINA ES UNA ORDEN
+                respuestasID[indexRespuesta] = {
+                    id:mensajeID,
+                    Responde: mensaje // Mando mensaje completo, podría mandar solo status
+                }
+                console.log("Llego mensaje de confirmación de Store con id " + mensajeID + ": " + mensaje.status);
+            }
         }
     }
     console.log(respuestasID[indexRespuesta]);
@@ -97,24 +110,31 @@ const portTracker = 27015; //CFGEAR ESTO PLS
 const ipTracker = '190.190.36.80';
 
 function store(formulario) {
-    let encriptado = crypto.createHash('sha1');
-    const hash = encriptado.update(formulario.filename + formulario.filesize).digest('hex');
-    const objetoStore = {
-        messageId: msgID,
-        route: '/file/' + hash + '/store',
-        originIP: '0.0.0.0',
-        originPort: puertoSV,
-        body: {
-            id: hash,
-            filename: formulario.filename,
-            filesize: formulario.filesize,
-            parIP: formulario.nodeIP,
-            parPort: formulario.nodePort
+    return new Promise((resolve) => {
+        let encriptado = crypto.createHash('sha1');
+        const hash = encriptado.update(formulario.filename + formulario.filesize).digest('hex');
+        const objetoStore = {
+            messageId: msgID,
+            route: '/file/' + hash + '/store',
+            originIP: '0.0.0.0',
+            originPort: puertoSV,
+            body: {
+                id: hash,
+                filename: formulario.filename,
+                filesize: formulario.filesize,
+                parIP: formulario.nodeIP,
+                parPort: formulario.nodePort
+            }
         }
-    }
-    msgID++;
-    console.log(objetoStore);
-    socket.send(JSON.stringify(objetoStore), portTracker, ipTracker);
+        socket.send(JSON.stringify(objetoStore), portTracker, ipTracker, (err) => {
+            if (!err) {
+                respuestasID.push({ id: msgID });
+                msgID++;
+            } else
+                console.log('Error al enviar petición Store.');
+            resolve();
+        });
+    });
 }
 
 function scan() {
@@ -124,7 +144,7 @@ function scan() {
             route: '/scan',
             originIP: '0.0.0.0',
             originPort: puertoSV,
-        }), portTracker, ipTracker, function(err) {
+        }), portTracker, ipTracker, function (err) {
             if (!err) {
                 respuestasID.push({ id: msgID });
                 msgID++;
@@ -142,7 +162,7 @@ function search(hash) {
             route: '/file/' + hash,
             originIP: '0.0.0.0',
             originPort: puertoSV
-        }), portTracker, ipTracker, function(err) {
+        }), portTracker, ipTracker, function (err) {
             if (!err) {
                 respuestasID.push({ id: msgID });
                 msgID++;

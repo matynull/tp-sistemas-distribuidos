@@ -143,7 +143,6 @@ socket.on('message', function (msg, info) {
                             }
                             let agrego = dhtPropia.agregar(objetoJSON.body.id, objetoJSON.body.filename, objetoJSON.body.filesize, objetoJSON.body.nodeIP, objetoJSON.body.nodePort);
                             //Mensaje de confirmación
-                            //FALTA MANEJAR AFUERA
                             if (agrego) {
                                 console.log("Se guardó un archivo con hash " + objetoJSON.body.id + '.');
                                 objetoJSONConfirmacion.status = true;
