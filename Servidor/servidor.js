@@ -4,6 +4,7 @@ const net = require('net')
 const udp = require('dgram');
 const crypto = require('crypto');
 const { SourceMap } = require('module');
+const { response } = require('express');
 
 const server = express();
 server.use(express.json());
@@ -25,7 +26,7 @@ server.get('/', (req, res) => {
 
 var respuestasID = []; // vector para ID-Respuesta 
 
-server.get('/file', async (req, res) => {
+server.get('/file', async(req, res) => {
     // buscar la lista completa de archivas y devolverla
     let index;
     let idSave = msgID;
@@ -33,19 +34,24 @@ server.get('/file', async (req, res) => {
     index = respuestasID.findIndex((e) => e.id == idSave);
     while (respuestasID[index].Response === undefined)
         await delay(50);
-    console.log(respuestasID[index]);
     res.send(JSON.stringify(respuestasID[index].Response));
 });
 
 function delay(delay) {
-	return new Promise(resolve=>{
-		setTimeout(()=>{resolve();},delay);
-	});
+    return new Promise(resolve => {
+        setTimeout(() => { resolve(); }, delay);
+    });
 }
 
-server.get('/file/:hash', (req, res) => {
+server.get('/file/:hash', async(req, res) => {
     //busca el archivo en los trackers y devuelve el .torrent con la lista de pares que tienen el archivo
-    res.send('Devuelve .torrente')
+    let index;
+    let idSave = msgID;
+    await search(req.params.hash);
+    index = respuestasID.findIndex((e) => e.id == idSave);
+    while (respuestasID[index].Response === undefined)
+        await delay(50);
+    res.send(JSON.stringify(respuestasID[index].Response));
 })
 
 
@@ -58,22 +64,35 @@ server.listen(27016, () => {
 let socket = udp.createSocket('udp4');
 const puertoSV = 27017
 
-socket.on('message', function (msg, info) {
-	//console.log("me llegó un mensaje");
+socket.on('message', function(msg, info) {
+    //console.log("me llegó un mensaje");
     let mensaje = JSON.parse(msg.toString());
     let mensajeID = mensaje.messageId;
     let indexRespuesta = respuestasID.findIndex((e) => e.id == mensajeID);
-    if (indexRespuesta != -1)
+    if (indexRespuesta != -1) {
         if (mensaje.route == '/scan')
             respuestasID[indexRespuesta] = {
                 id: mensajeID,
                 Response: mensaje.body.files
             }
+        else {
+            if (mensaje.route.includes('/found'))
+                respuestasID[indexRespuesta] = {
+                    id: mensajeID,
+                    Response: {
+                        hash: mensaje.body.id,
+                        trackerIP: info.address,
+                        trackerPort: info.port
+                    }
+                }
+        }
+    }
+    console.log(respuestasID[indexRespuesta]);
 });
 
 socket.bind(puertoSV);
 const portTracker = 27015; //cfgear esto
-const ipTracker = '201.235.167.115';
+const ipTracker = '190.190.36.80';
 
 function store(formulario) {
     let encriptado = crypto.createHash('sha1');
@@ -97,19 +116,36 @@ function store(formulario) {
 }
 
 function scan() {
-    return new Promise((resolve)=>{
+    return new Promise((resolve) => {
         socket.send(JSON.stringify({
             messageId: msgID,
             route: '/scan',
             originIP: '0.0.0.0',
             originPort: puertoSV,
-        }), portTracker, ipTracker, function (err) {
+        }), portTracker, ipTracker, function(err) {
             if (!err) {
                 respuestasID.push({ id: msgID });
                 msgID++;
-            }
-            else
+            } else
                 console.log('error en send de scan');
+            resolve();
+        })
+    })
+}
+
+function search(hash) {
+    return new Promise((resolve) => {
+        socket.send(JSON.stringify({
+            messageId: msgID,
+            route: '/file/' + hash,
+            originIP: '0.0.0.0',
+            originPort: puertoSV
+        }), portTracker, ipTracker, function(err) {
+            if (!err) {
+                respuestasID.push({ id: msgID });
+                msgID++;
+            } else
+                console.log('error en send de search');
             resolve();
         })
     })

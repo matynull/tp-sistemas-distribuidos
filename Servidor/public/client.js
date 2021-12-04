@@ -11,53 +11,72 @@ function doupload() {
     //open the request
     xhr.open('POST', 'http://190.245.254.237:27016/file')
     xhr.setRequestHeader("Content-Type", "application/json");
-	event.preventDefault();
+    event.preventDefault();
     //send the form data
     xhr.send(package);
 }
 
-function scan(){
+function scan() {
     var xhr = new XMLHttpRequest();
     //open the request
     xhr.open('GET', 'http://190.245.254.237:27016/file')
     xhr.setRequestHeader("Content-Type", "application/json");
     xhr.onreadystatechange = function() {
-        if (xhr.readyState === 4) {
-			let listaArchivos = document.getElementById("archivos");
-			listaArchivos.innerHTML = ''; //elimina la lista previa
-			let archivos = JSON.parse(xhr.response).sort((a,b)=>{ //ordena los archivos alfabéticamente y luego por tamaño
-				if (a.filename.toUpperCase() < b.filename.toUpperCase())
-					return -1;
-				else
-					if (a.filename.toUpperCase() == b.filename.toUpperCase() && a.filesize <= b.filesize)
-						return -1;
-					else
-						return 1;
-			});
-			archivos.forEach((e,i,array)=>{ //agrega los archivos a la lista en el html
-				let elemento = document.createElement("li");
-				elemento.setAttribute('id',e.filename);
-                let aux = e.filesize;
-                if(aux>=1024){
-                    aux=aux/1024
-                    if(aux>=1024){
-                        aux=aux/1024
-                        if(aux>1024){
-                            aux=aux/1024
-                            elemento.appendChild(document.createTextNode(e.filename + " - " + Math.trunc(aux) + " GB"));
-                        }
-                        else
-                            elemento.appendChild(document.createTextNode(e.filename + " - " + Math.trunc(aux) + " MB"));
-                    }
+            if (xhr.readyState === 4) {
+                let listaArchivos = document.getElementById("archivos");
+                listaArchivos.innerHTML = ''; //elimina la lista previa
+                let archivos = JSON.parse(xhr.response).sort((a, b) => { //ordena los archivos alfabéticamente y luego por tamaño
+                    if (a.filename.toUpperCase() < b.filename.toUpperCase())
+                        return -1;
                     else
-                        elemento.appendChild(document.createTextNode(e.filename + " - " + Math.trunc(aux) + " kB"));
-                }
-                else
-				    elemento.appendChild(document.createTextNode(e.filename + " - " + aux + " bytes"));
-				listaArchivos.appendChild(elemento);
-			});
+                    if (a.filename.toUpperCase() == b.filename.toUpperCase() && a.filesize <= b.filesize)
+                        return -1;
+                    else
+                        return 1;
+                });
+                archivos.forEach((e, i, array) => { //agrega los archivos a la lista en el html
+                    let elemento = document.createElement("li");
+                    elemento.setAttribute('id', e.filename);
+                    let aux = e.filesize;
+                    if (aux >= 1024) {
+                        aux = aux / 1024
+                        if (aux >= 1024) {
+                            aux = aux / 1024
+                            if (aux > 1024) {
+                                aux = aux / 1024
+                                elemento.appendChild(document.createTextNode(e.filename + " - " + Math.trunc(aux) + " GB"));
+                            } else
+                                elemento.appendChild(document.createTextNode(e.filename + " - " + Math.trunc(aux) + " MB"));
+                        } else
+                            elemento.appendChild(document.createTextNode(e.filename + " - " + Math.trunc(aux) + " kB"));
+                    } else
+                        elemento.appendChild(document.createTextNode(e.filename + " - " + aux + " bytes"));
+
+                    let boton = document.createElement("button");
+                    boton.innerHTML = "Descargar";
+                    boton.name = "descargar";
+                    boton.onclick = () => {
+                        let xhr = new XMLHttpRequest();
+                        console.log("pinga2");
+                        xhr.open('GET', 'http://190.245.254.237:27016/file/' + e.id);
+                        xhr.setRequestHeader("Content-Type", "application/json");
+                        xhr.onreadystatechange = function() {
+                            if (xhr.readyState === 4) {
+                                console.log(xhr.response);
+                                let dataStr = 'data:text/plain.;charset=utf-8,' + encodeURIComponent(xhr.response);
+                                let a = document.createElement('a');
+                                a.href = dataStr;
+                                a.download = e.filename + ".torrente";
+                                a.click();
+                            }
+                        }
+                        xhr.send();
+                    }
+                    elemento.appendChild(boton)
+                    listaArchivos.appendChild(elemento);
+                });
+            }
         }
-      }
-    //send the form data
+        //send the form data
     xhr.send();
 }
