@@ -131,7 +131,7 @@ const archivo = function (hash, filename, filesize, ip, port) {
         else
             return false;
     };
-    this.agregarPar(ip, port);
+    //this.agregarPar(ip, port);
 }
 
 let dhtPropia, dhtAnt, dhtSig;

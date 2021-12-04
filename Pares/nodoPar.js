@@ -1,8 +1,8 @@
 const udp = require('dgram');
 const net = require('net');
-const readline = require('readline')
 const fs = require('fs');
 const crypto = require('crypto');
+const readline = require('readline');
 
 let msgID = 0;
 let socket = udp.createSocket('udp4');
@@ -25,45 +25,67 @@ function delay(delay) {
     });
 }
 
-stdin.addListener("data", function (res) {
-    fs.readFile(res, "utf-8", async (err, data) => {
-        if (!err) {
-            let info = JSON.parse(data);
-            let idSave = msgID;
-            let indice;
-            let indiceSeeding = seeding.findIndex(e => e == info.hash);
-            await search(info.hash, info.trackerIP, info.trackerPort);
-            indice = respuestasID.findIndex((e) => e.id == idSave);
-            while (respuestasID[indice].Response === undefined) {
-                await delay(50);
-            }
-            let responseSearch = respuestasID[indice].Response;
-            if (responseSearch.body.id !== undefined) {
-                //Se recibió la respuesta del Search
-                if (indiceSeeding == -1) {
-                    console.log('Empieza la descarga');
-                } else {
-                    //agregarse a si mismo como par
-                    //mover esto a una función así lo podemos llamar
-                    idSave = msgID;
-                    await addPar(responseSearch.body);
-                    indice = respuestasID.findIndex((e) => e.id == idSave);
-                    while (respuestasID[indice].Response === undefined)
-                        await delay(50);
-                    let responseAddPar = respuestasID[indice].Response;
-                    //Se recibió la respuesta del addPar
-                    if (responseAddPar.status == true)
-                        console.log("Se agregó el par al archivo con hash " + responseSearch.body.id + ".");
-                    else
-                        console.log("No se agregó el par al archivo con hash " + responseSearch.body.id + ".");
-                }
-            }
-            else
-                console.log('No existe el archivo para el torrente asociado.');
+var pregunta = function () {
+    return new Promise((resolve) => {
+        rl.question('', respuesta => {
+            resolve(respuesta);
+        })
+    });
+};
 
+(async function leerRuta() {
+    let ruta;
+    while (true) {
+        ruta = await pregunta();
+        if (ruta.includes(' '))
+            ruta = ruta.substring(1, ruta.length - 1);
+        if (ruta.includes('.torrente')) {
+            fs.readFile(ruta, "utf-8", async (err, data) => {
+                if (!err) {
+                    let info = JSON.parse(data);
+                    let idSave = msgID;
+                    let indice;
+                    let indiceSeeding = seeding.findIndex(e => e == info.hash);
+                    await search(info.hash, info.trackerIP, info.trackerPort);
+                    indice = respuestasID.findIndex((e) => e.id == idSave);
+                    while (respuestasID[indice].Response === undefined) {
+                        await delay(50);
+                    }
+                    let responseSearch = respuestasID[indice].Response;
+                    if (responseSearch.body.id !== undefined) {
+                        //Se recibió la respuesta del Search
+                        if (indiceSeeding == -1) {
+                            console.log('Empieza la descarga');
+                        } else {
+                            //agregarse a si mismo como par
+                            //mover esto a una función así lo podemos llamar
+                            idSave = msgID;
+                            await addPar(responseSearch.body);
+                            indice = respuestasID.findIndex((e) => e.id == idSave);
+                            while (respuestasID[indice].Response === undefined)
+                                await delay(50);
+                            let responseAddPar = respuestasID[indice].Response;
+                            //Se recibió la respuesta del addPar
+                            if (responseAddPar.status == true)
+                                console.log("Se agregó el par al archivo con hash " + responseSearch.body.id + ".");
+                            else
+                                console.log("No se agregó el par al archivo con hash " + responseSearch.body.id + ".");
+                        }
+                    }
+                    else
+                        console.log('No existe el archivo para el torrente asociado.');
+                }
+                else
+                    console.log(err);
+            })
         }
-    })
-});
+        else
+            console.log('El archivo debe tener extensión .torrente');
+    }
+})();
+
+
+//stdin.addListener("data", function (res)) 
 
 function addPar(info) {
     return new Promise((resolve) => {
