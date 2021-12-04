@@ -4,7 +4,7 @@ const readline = require('readline')
 const fs = require('fs');
 const crypto = require('crypto');
 
-let msgID = 1000000;
+let msgID = 0;
 let socket = udp.createSocket('udp4');
 socket.bind(27018);
 let seeding = [];
@@ -17,43 +17,110 @@ const rl = readline.createInterface({
 
 var stdin = process.openStdin();
 
-stdin.addListener("data", function(res) {
-    fs.readFile(res, "utf-8", async(err, data) => {
+var respuestasID = []; // vector para ID-Respuesta 
+
+function delay(delay) {
+    return new Promise(resolve => {
+        setTimeout(() => { resolve(); }, delay);
+    });
+}
+
+stdin.addListener("data", function (res) {
+    fs.readFile(res, "utf-8", async (err, data) => {
         if (!err) {
             let info = JSON.parse(data);
-            let indice = seeding.findIndex(e => e == info.hash);
-            if (indice == -1) {
-                let msg = {
-                    messageId: msgID,
-                    route: '/file/' + info.hash,
-                    originIP: '0.0.0.0',
-                    originPort: 27018
-                };
-                msgID++;
-                socket.send(msg, info.trackerPort, info.trackerIP, (err) => {
-                    if (err)
-                        console.log("error al enviar mensaje a tracker");
-                });
+            let idSave = msgID;
+            let indice;
+            let indiceSeeding = seeding.findIndex(e => e == info.hash);
+            await search(info.hash,info.trackerIP,trackerPort);
+            indice = respuestasID.findIndex((e) => e.id == idSave);
+            while (respuestasID[indice].Response === undefined)
+                await delay(50);
+            let responseSearch = respuestasID[indice].Response;
+            //Se recibió la respuesta del Search
+            if (indiceSeeding == -1) {
+                //Descargar archivo
             } else {
                 //agregarse a si mismo como par
+                //mover esto a una función así lo podemos llamar
+                idSave = msgID;
+                await addPar(responseSearch.body);
+                indice = respuestasID.findIndex((e) => e.id == idSave);
+                while (respuestasID[indice].Response === undefined)
+                    await delay(50);
+                let responseAddPar = respuestasID[indice].Response;
+                //Se recibió la respuesta del addPar
+                if (responseAddPar.status == true)
+                    console.log("Se agregó el par al archivo con hash " + responseSearch.body.id + ".");
+                else
+                    console.log("No se agregó el par al archivo con hash " + responseSearch.body.id + ".");
             }
         }
     })
 });
 
+function addPar(info) {
+    return new Promise((resolve) => {
+        let msg = {
+            messageId: msgID,
+            route: '/file/' + info.id + '/addPar',
+            id: info.id,
+            filename: info.filename,
+            filesize: info.filesize,
+            parIP: '0.0.0.0',
+            parPort: 27018,
+        }
+        socket.send(msg,info.trackerPort,info.trackerIP,(err)=>{
+            if (!err) {
+                respuestasID.push({ id: msgID });
+                msgID+=2;
+            } else
+                console.log('error en send de addPar');
+            resolve();
+        });
+    });
+}
+
+function search(hash,ip,port) {
+    return new Promise((resolve) => {
+        socket.send(JSON.stringify({
+            messageId: msgID,
+            route: '/file/' + hash,
+            originIP: '0.0.0.0',
+            originPort: 27018
+        }), port, ip, function (err) {
+            if (!err) {
+                respuestasID.push({ id: msgID });
+                msgID+=2;
+            } else
+                console.log('error en send de search');
+            resolve();
+        })
+    })
+}
+
 socket.on("message", (msg, info) => {
     let objetoJSON = JSON.parse(msg.toString());
-    //objetoJSON.body.pares
+    let mensajeID = mensaje.messageId;
+    let indexRespuesta = respuestasID.findIndex((e) => e.id == mensajeID);
+    if (indexRespuesta != -1) {
+        respuestasID[indexRespuesta] = {
+            id: mensajeID,
+            Response: objetoJSON
+        };
+    } else {
+        console.log("Llegó un mensaje con ID desconocido.");
+    }
 })
 
 function checkSeedingFiles() {
     let encriptado = crypto.createHash('sha1');
-    fs.readdir("./Seeding", function(err, filenames) {
+    fs.readdir("./Seeding", function (err, filenames) {
         if (err) {
             console.log("Error al leer archivos en Seeding");
             return;
         }
-        filenames.forEach(function(filename) {
+        filenames.forEach(function (filename) {
             const hash = encriptado.update(filename + fs.statSync("./Seeding/" + filename).size).digest('hex');
             seeding.push(hash);
         });

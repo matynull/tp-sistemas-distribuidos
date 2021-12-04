@@ -60,6 +60,20 @@ const dht = function () {
             else
                 return 1;
     }
+
+    this.agregarPar = function(hash,ip,puerto) {
+        let id = parseInt(hash.substring(0, 2), 16);
+        let indice1 = this.elementos.findIndex(e => e.id == id);
+        if (indice1 == -1)
+            return false;
+        else {
+            let indice2 = this.elementos[indice1].archivos.findIndex(e => e.hash == hash);
+            if (indice2 == -1)
+                return false;
+            else
+                return this.elementos[indice1].archivos[indice2].agregarPar(ip,puerto);
+        }
+    };
 }
 
 //Conjunto de archivos que comparten id (primeros dos caracteres del hash)
@@ -83,10 +97,15 @@ const archivo = function (hash, filename, filesize, ip, port) {
     this.filesize = filesize;
     this.pares = [];
     this.agregarPar = function (ip, puerto) {
-        this.pares.push({
+        const cantVieja = this.pares.length;
+        let cantNueva = this.pares.push({
             ip: ip,
             puerto: puerto
-        })
+        });
+        if (cantVieja == cantNueva)
+            return false;
+        else
+            return true;
     };
     this.agregarPar(ip, port);
 }
@@ -131,22 +150,21 @@ socket.on('message', function (msg, info) {
     let tokens = objetoJSON.route.split('/');
     switch (tokens[1]) {
         case 'file': //Search, Store, addPar
-            let id = parseInt(tokens[2].substring(0, 2),16);
+            let id = parseInt(tokens[2].substring(0, 2), 16);
             if (id <= idMax && id > idMin) { //Este tracker debe manejar la petición
                 if (tokens.length > 3) { //Store o addPar
                     switch (tokens[3]) {
                         case 'store':
                             let objetoJSONConfirmacion = {
                                 messageId: objetoJSON.messageId,
-                                route: '/file/'+tokens[2]+'/store',
+                                route: '/file/' + tokens[2] + '/store',
                                 status: false
                             }
-                            let agrego = dhtPropia.agregar(objetoJSON.body.id, objetoJSON.body.filename, objetoJSON.body.filesize, objetoJSON.body.nodeIP, objetoJSON.body.nodePort);
+                            objetoJSONConfirmacion.status = dhtPropia.agregar(objetoJSON.body.id, objetoJSON.body.filename, objetoJSON.body.filesize, objetoJSON.body.nodeIP, objetoJSON.body.nodePort);
                             //Mensaje de confirmación
-                            if (agrego) {
+                            if (objetoJSONConfirmacion.status)
                                 console.log("Se guardó un archivo con hash " + objetoJSON.body.id + '.');
-                                objetoJSONConfirmacion.status = true;
-                            } else
+                            else
                                 console.log("Ya existía un archivo con hash " + objetoJSON.body.id + '.');
                             socket.send(JSON.stringify(objetoJSONConfirmacion), objetoJSON.originPort, objectoJSON.originIP, (err) => {
                                 if (err)
@@ -154,7 +172,23 @@ socket.on('message', function (msg, info) {
                             });
                             break;
                         case 'addPar':
-                            //TO DO
+                            let objetoJSONConfirmacion = {
+                                messageId: objetoJSON.messageId,
+                                route: '/file/' + tokens[2] + '/addPar',
+                                status: false
+                            }
+                            if (objetoJSON.parIP !== undefined && objetoJSON.parIP == '0.0.0.0')
+                                objetoJSON.parIP = info.address;
+                            objetoJSONConfirmacion.status = dhtPropia.agregarPar(objetoJSON.id,objetoJSON.parIP,objetoJSON.parPort);
+                            //Mensaje de confirmación
+                            if (objetoJSONConfirmacion.status)
+                                console.log("Se agregó un par al archivo con hash " + objetoJSON.body.id + '.');
+                            else
+                                console.log("No existía un archivo con hash " + objetoJSON.body.id + '.');
+                            socket.send(JSON.stringify(objetoJSONConfirmacion), objetoJSON.parPort, objectoJSON.parIP, (err) => {
+                                if (err)
+                                    socket.close('Error en tracker ' + idMax + ' al enviar confirmación de addPar.');
+                            });
                             break;
                         default:
                             console.log('Función ' + tokens[3] + ' no definida.');
@@ -162,25 +196,26 @@ socket.on('message', function (msg, info) {
                     }
                 } else //Search
                 {
-                    //GUARDA
-                    //QUÉ HACER SI NO SE ENCONTRÓ?
-                    //NO MANDAR NADA?
+                    //Si no se encuentra el archivo buscado, se devuelve Found con body vacío
                     let objetoJSONFound = {
                         messageId: objetoJSON.messageId,
                         route: '/file/' + tokens[2] + '/found',
                         body: {
-                            id: tokens[2],
-                            trackerIP: '0.0.0.0', //La IP es reemplazada por el servidor que recibe el mensaje Found.
-                            trackerPort: socket.address().port
                         }
                     }
                     if (dhtPropia.buscar(tokens[2]) == 1) {
-                        console.log("Se encontro un archivo con hash " + tokens[2] + '.');
-                        socket.send(JSON.stringify(objetoJSONFound), objetoJSON.originPort, objetoJSON.originIP, (err) => {
-                            if (err)
-                                socket.close('Error en tracker ' + idNodo + ' al enviar mensaje Found.');
-                        });
-                    }
+                        console.log("Se encontró un archivo con hash " + tokens[2] + '.');
+                        objetoJSONFound.body = {
+                            id: tokens[2],
+                            trackerIP: '0.0.0.0', //La IP es reemplazada por el servidor que recibe el mensaje Found
+                            trackerPort: socket.address().port
+                        }
+                    } else
+                        console.log("No se encontró ningún archivo con hash " + tokens[2] + '.');
+                    socket.send(JSON.stringify(objetoJSONFound), objetoJSON.originPort, objetoJSON.originIP, (err) => {
+                        if (err)
+                            socket.close('Error en tracker ' + idNodo + ' al enviar mensaje Found.');
+                    });
                 }
             }
             //Pasar la petición al siguiente Tracker
@@ -206,7 +241,7 @@ socket.on('message', function (msg, info) {
                     objetoJSON.originIP = info.address;
                 } else
                     objetoJSONRespuesta.body.files = objetoJSON.body.files;
-                dhtPropia.archivos().forEach((e, i, array) => { 
+                dhtPropia.archivos().forEach((e, i, array) => {
                     objetoJSONRespuesta.body.files.push(e);
                 });
                 socket.send(JSON.stringify(objetoJSONRespuesta), puertoSig, ipSig, (err) => {
@@ -254,3 +289,5 @@ socket.bind({
     port: 27015,
     exclusive: true
 });
+
+console.log("Escuchando en el puerto 27015.");
