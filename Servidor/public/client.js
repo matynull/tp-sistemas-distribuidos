@@ -4,12 +4,12 @@ function doupload() {
     let package = JSON.stringify({
         "filename": file.name,
         "filesize": file.size,
-        "nodeIP": '',
+        "nodeIP": '0.0.0.0',
         "nodePort": 27018
     })
     
     var xhr = new XMLHttpRequest();
-    xhr.open('POST', 'http://190.245.254.237:27016/file')
+    xhr.open('POST', 'http://localhost:27016/file')
     xhr.setRequestHeader("Content-Type", "application/json");
     event.preventDefault();
     xhr.send(package);
@@ -17,7 +17,7 @@ function doupload() {
 
 function scan() {
     var xhr = new XMLHttpRequest();
-    xhr.open('GET', 'http://190.245.254.237:27016/file')
+    xhr.open('GET', 'http://localhost:27016/file')
     xhr.setRequestHeader("Content-Type", "application/json");
     xhr.onreadystatechange = function() {
             if (xhr.readyState === 4) {
@@ -56,7 +56,7 @@ function scan() {
                     boton.onclick = () => {
                         let xhr = new XMLHttpRequest();
                         console.log("pinga2");
-                        xhr.open('GET', 'http://190.245.254.237:27016/file/' + e.id);
+                        xhr.open('GET', 'http://localhost:27016/file/' + e.id);
                         xhr.setRequestHeader("Content-Type", "application/json");
                         xhr.onreadystatechange = function() {
                             if (xhr.readyState === 4) {

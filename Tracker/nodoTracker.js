@@ -40,9 +40,9 @@ const dht = function () {
         this.elementos.forEach((e, i, array) => {
             e.archivos.forEach((e1, i1, array1) => {
                 retorno.push({
-                    "id": e1.hash,
-                    "filename": e1.filename,
-                    "filesize": e1.filesize
+                    id: e1.hash,
+                    filename: e1.filename,
+                    filesize: e1.filesize
                 });
             })
         });
@@ -74,6 +74,20 @@ const dht = function () {
                 return this.elementos[indice1].archivos[indice2].agregarPar(ip,puerto);
         }
     };
+
+    this.pares = function(hash) {
+        let id = parseInt(hash.substring(0, 2), 16);
+        let indice1 = this.elementos.findIndex(e => e.id == id);
+        if (indice1 == -1)
+            return false;
+        else {
+            let indice2 = this.elementos[indice1].archivos.findIndex(e => e.hash == hash);
+            if (indice2 == -1)
+                return false;
+            else
+                return this.elementos[indice1].archivos[indice2].pares;
+        }
+    };
 }
 
 //Conjunto de archivos que comparten id (primeros dos caracteres del hash)
@@ -83,8 +97,12 @@ const elementoHash = function (hash) {
     this.agregarArchivo = function (hash, filename, filesize, ip, port) {
         let cant = this.archivos.length;
         //Devuelve verdadero si realmente se agregó el archivo
-        if (cant != this.archivos.push(new archivo(hash, filename, filesize, ip, port)))
-            return true;
+        let indice = this.archivos.findIndex(e=> e.hash = hash);
+        if (indice == -1)
+            if (cant != this.archivos.push(new archivo(hash, filename, filesize, ip, port)))
+                return true;
+            else
+                return false;
         else
             return false;
     }
@@ -98,14 +116,20 @@ const archivo = function (hash, filename, filesize, ip, port) {
     this.pares = [];
     this.agregarPar = function (ip, puerto) {
         const cantVieja = this.pares.length;
-        let cantNueva = this.pares.push({
-            ip: ip,
-            puerto: puerto
-        });
-        if (cantVieja == cantNueva)
-            return false;
+        let indice = this.pares.findIndex(e => e.ip == ip);
+        if (indice == -1)
+        {
+            let cantNueva = this.pares.push({
+                ip: ip,
+                puerto: puerto
+            });
+            if (cantVieja == cantNueva)
+                return false;
+            else
+                return true;
+        }
         else
-            return true;
+            return false;
     };
     this.agregarPar(ip, port);
 }
@@ -161,7 +185,7 @@ socket.on('message', function (msg, info) {
                                 route: '/file/' + tokens[2] + '/store',
                                 status: false
                             }
-                            objetoJSONConfirmacion.status = dhtPropia.agregar(objetoJSON.body.id, objetoJSON.body.filename, objetoJSON.body.filesize, objetoJSON.body.nodeIP, objetoJSON.body.nodePort);
+                            objetoJSONConfirmacion.status = dhtPropia.agregar(objetoJSON.body.id, objetoJSON.body.filename, objetoJSON.body.filesize, objetoJSON.body.parIP, objetoJSON.body.parPort);
                             //Mensaje de confirmación
                             if (objetoJSONConfirmacion.status)
                                 console.log("Se guardó un archivo con hash " + objetoJSON.body.id + '.');
@@ -183,10 +207,10 @@ socket.on('message', function (msg, info) {
                             objetoJSONConfirmacion.status = dhtPropia.agregarPar(objetoJSON.id,objetoJSON.parIP,objetoJSON.parPort);
                             //Mensaje de confirmación
                             if (objetoJSONConfirmacion.status)
-                                console.log("Se agregó un par al archivo con hash " + objetoJSON.body.id + '.');
+                                console.log("Se agregó un par al archivo con hash " + objetoJSON.id + '.');
                             else
-                                console.log("No existía un archivo con hash " + objetoJSON.body.id + '.');
-                            socket.send(JSON.stringify(objetoJSONConfirmacion), objetoJSON.parPort, objectoJSON.parIP, (err) => {
+                                console.log("No existía un archivo con hash " + objetoJSON.id + '.');
+                            socket.send(JSON.stringify(objetoJSONConfirmacion), objetoJSON.parPort, objetoJSON.parIP, (err) => {
                                 if (err)
                                     socket.close('Error en tracker ' + idMax + ' al enviar confirmación de addPar.');
                             });
@@ -209,7 +233,8 @@ socket.on('message', function (msg, info) {
                         objetoJSONFound.body = {
                             id: tokens[2],
                             trackerIP: '0.0.0.0', //La IP es reemplazada por el servidor que recibe el mensaje Found
-                            trackerPort: socket.address().port
+                            trackerPort: socket.address().port,
+                            pares: dhtPropia.pares(tokens[2])
                         }
                     } else
                         console.log("No se encontró ningún archivo con hash " + tokens[2] + '.');

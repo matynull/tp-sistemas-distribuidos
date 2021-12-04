@@ -62,7 +62,7 @@ server.get('/file/:hash', async (req, res) => {
 })
 
 
-server.listen(27016, () => {
+server.listen(27016,'0.0.0.0', () => {
     console.log('Escuchando 27016');
 })
 
@@ -109,7 +109,7 @@ socket.on('message', function (msg, info) {
 
 socket.bind(puertoSV);
 const portTracker = 27015; //CFGEAR ESTO PLS
-const ipTracker = '190.190.36.80';
+const ipTracker = 'localhost';
 
 function store(formulario) {
     return new Promise((resolve) => {

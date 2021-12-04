@@ -32,29 +32,35 @@ stdin.addListener("data", function (res) {
             let idSave = msgID;
             let indice;
             let indiceSeeding = seeding.findIndex(e => e == info.hash);
-            await search(info.hash,info.trackerIP,trackerPort);
+            await search(info.hash, info.trackerIP, info.trackerPort);
             indice = respuestasID.findIndex((e) => e.id == idSave);
-            while (respuestasID[indice].Response === undefined)
+            while (respuestasID[indice].Response === undefined) {
                 await delay(50);
-            let responseSearch = respuestasID[indice].Response;
-            //Se recibió la respuesta del Search
-            if (indiceSeeding == -1) {
-                //Descargar archivo
-            } else {
-                //agregarse a si mismo como par
-                //mover esto a una función así lo podemos llamar
-                idSave = msgID;
-                await addPar(responseSearch.body);
-                indice = respuestasID.findIndex((e) => e.id == idSave);
-                while (respuestasID[indice].Response === undefined)
-                    await delay(50);
-                let responseAddPar = respuestasID[indice].Response;
-                //Se recibió la respuesta del addPar
-                if (responseAddPar.status == true)
-                    console.log("Se agregó el par al archivo con hash " + responseSearch.body.id + ".");
-                else
-                    console.log("No se agregó el par al archivo con hash " + responseSearch.body.id + ".");
             }
+            let responseSearch = respuestasID[indice].Response;
+            if (responseSearch.body.id !== undefined) {
+                //Se recibió la respuesta del Search
+                if (indiceSeeding == -1) {
+                    console.log('Empieza la descarga');
+                } else {
+                    //agregarse a si mismo como par
+                    //mover esto a una función así lo podemos llamar
+                    idSave = msgID;
+                    await addPar(responseSearch.body);
+                    indice = respuestasID.findIndex((e) => e.id == idSave);
+                    while (respuestasID[indice].Response === undefined)
+                        await delay(50);
+                    let responseAddPar = respuestasID[indice].Response;
+                    //Se recibió la respuesta del addPar
+                    if (responseAddPar.status == true)
+                        console.log("Se agregó el par al archivo con hash " + responseSearch.body.id + ".");
+                    else
+                        console.log("No se agregó el par al archivo con hash " + responseSearch.body.id + ".");
+                }
+            }
+            else
+                console.log('No existe el archivo para el torrente asociado.');
+
         }
     })
 });
@@ -70,10 +76,11 @@ function addPar(info) {
             parIP: '0.0.0.0',
             parPort: 27018,
         }
-        socket.send(msg,info.trackerPort,info.trackerIP,(err)=>{
+        console.log(info.trackerPort);
+        socket.send(JSON.stringify(msg), info.trackerPort, info.trackerIP, (err) => {
             if (!err) {
                 respuestasID.push({ id: msgID });
-                msgID+=2;
+                msgID += 2;
             } else
                 console.log('error en send de addPar');
             resolve();
@@ -81,7 +88,7 @@ function addPar(info) {
     });
 }
 
-function search(hash,ip,port) {
+function search(hash, ip, port) {
     return new Promise((resolve) => {
         socket.send(JSON.stringify({
             messageId: msgID,
@@ -91,7 +98,7 @@ function search(hash,ip,port) {
         }), port, ip, function (err) {
             if (!err) {
                 respuestasID.push({ id: msgID });
-                msgID+=2;
+                msgID += 2;
             } else
                 console.log('error en send de search');
             resolve();
@@ -101,7 +108,7 @@ function search(hash,ip,port) {
 
 socket.on("message", (msg, info) => {
     let objetoJSON = JSON.parse(msg.toString());
-    let mensajeID = mensaje.messageId;
+    let mensajeID = objetoJSON.messageId;
     let indexRespuesta = respuestasID.findIndex((e) => e.id == mensajeID);
     if (indexRespuesta != -1) {
         respuestasID[indexRespuesta] = {
