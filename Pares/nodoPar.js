@@ -115,13 +115,13 @@ socket.on("message", (msg, info) => {
 
 function checkSeedingFiles() {
     let encriptado = crypto.createHash('sha1');
-    fs.readdir("./Seeding", function (err, filenames) {
+    fs.readdir("./Archivos", function (err, filenames) {
         if (err) {
-            console.log("Error al leer archivos en Seeding");
+            console.log("Error al leer archivos.");
             return;
         }
         filenames.forEach(function (filename) {
-            const hash = encriptado.update(filename + fs.statSync("./Seeding/" + filename).size).digest('hex');
+            const hash = encriptado.update(filename + fs.statSync("./Archivos/" + filename).size).digest('hex');
             seeding.push(hash);
         });
     });

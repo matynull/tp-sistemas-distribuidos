@@ -167,7 +167,7 @@ socket.on('message', function (msg, info) {
                                 console.log("Se guardó un archivo con hash " + objetoJSON.body.id + '.');
                             else
                                 console.log("Ya existía un archivo con hash " + objetoJSON.body.id + '.');
-                            socket.send(JSON.stringify(objetoJSONConfirmacion), objetoJSON.originPort, objectoJSON.originIP, (err) => {
+                            socket.send(JSON.stringify(objetoJSONConfirmacion), objetoJSON.originPort, objetoJSON.originIP, (err) => {
                                 if (err)
                                     socket.close('Error en tracker ' + idMax + ' al enviar confirmación de Store.');
                             });
@@ -225,7 +225,7 @@ socket.on('message', function (msg, info) {
                     if (err)
                         socket.close('Error en tracker ' + idMax + ' - enviando al siguiente.');
                 });
-                console.log("pasé el mensaje");
+                console.log("Se reenvió un mensaje al siguiente Tracker,");
             }
             break;
         case 'scan':
