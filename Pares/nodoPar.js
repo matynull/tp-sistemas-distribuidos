@@ -28,7 +28,7 @@ stdin.addListener("data", function(res) {
                     route: '/file/' + info.hash,
                     originIP: '0.0.0.0',
                     originPort: 27018
-                }
+                };
                 msgID++;
                 socket.send(msg, info.trackerPort, info.trackerIP, (err) => {
                     if (err)
@@ -43,7 +43,7 @@ stdin.addListener("data", function(res) {
 
 socket.on("message", (msg, info) => {
     let objetoJSON = JSON.parse(msg.toString());
-    objetoJSON.body.pares
+    //objetoJSON.body.pares
 })
 
 function checkSeedingFiles() {

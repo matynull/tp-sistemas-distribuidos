@@ -7,25 +7,23 @@ function doupload() {
         "nodeIP": '',
         "nodePort": 27018
     })
+    
     var xhr = new XMLHttpRequest();
-    //open the request
     xhr.open('POST', 'http://190.245.254.237:27016/file')
     xhr.setRequestHeader("Content-Type", "application/json");
     event.preventDefault();
-    //send the form data
     xhr.send(package);
 }
 
 function scan() {
     var xhr = new XMLHttpRequest();
-    //open the request
     xhr.open('GET', 'http://190.245.254.237:27016/file')
     xhr.setRequestHeader("Content-Type", "application/json");
     xhr.onreadystatechange = function() {
             if (xhr.readyState === 4) {
                 let listaArchivos = document.getElementById("archivos");
-                listaArchivos.innerHTML = ''; //elimina la lista previa
-                let archivos = JSON.parse(xhr.response).sort((a, b) => { //ordena los archivos alfabéticamente y luego por tamaño
+                listaArchivos.innerHTML = ''; //Elimina la lista previa
+                let archivos = JSON.parse(xhr.response).sort((a, b) => { //Ordena los archivos alfabéticamente y luego por tamaño
                     if (a.filename.toUpperCase() < b.filename.toUpperCase())
                         return -1;
                     else
@@ -34,7 +32,7 @@ function scan() {
                     else
                         return 1;
                 });
-                archivos.forEach((e, i, array) => { //agrega los archivos a la lista en el html
+                archivos.forEach((e, i, array) => { //Agrega los archivos a la lista en el html
                     let elemento = document.createElement("li");
                     elemento.setAttribute('id', e.filename);
                     let aux = e.filesize;
@@ -77,6 +75,5 @@ function scan() {
                 });
             }
         }
-        //send the form data
     xhr.send();
 }

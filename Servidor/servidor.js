@@ -64,6 +64,8 @@ server.listen(27016, () => {
 let socket = udp.createSocket('udp4');
 const puertoSV = 27017
 
+//GUARDA MANEJAR CONFIRMACION DE STORE
+
 socket.on('message', function(msg, info) {
     //console.log("me llegó un mensaje");
     let mensaje = JSON.parse(msg.toString());
@@ -91,7 +93,7 @@ socket.on('message', function(msg, info) {
 });
 
 socket.bind(puertoSV);
-const portTracker = 27015; //cfgear esto
+const portTracker = 27015; //CFGEAR ESTO PLS
 const ipTracker = '190.190.36.80';
 
 function store(formulario) {
@@ -150,22 +152,3 @@ function search(hash) {
         })
     })
 }
-
-/*const objetoCount = {
-    messageId: 'idCount',
-    route: '/count',
-    originIP: '0.0.0.0',
-    originPort: puertoSV,
-    body: {
-        trackerCount: 0,
-        fileCount: 0
-    }
-}
-
-const objetoSearch = {
-    messageId: 'idSearch',
-    route: '/file/' + hash,
-    originIP: '0.0.0.0',
-    originPort: puertoSV
-}
-*/

@@ -4,42 +4,38 @@ const crypto = require('crypto');
 const udp = require('dgram');
 const fs = require('fs');
 
-let ipSig, puertoSig, ipAnt, puertoAnt, cantNodos, idNodo, idNodoAnt;
-let ipOrigen, portOrigen;
-let dhtPropia, dhtAnterior = [],
-    dhtSiguiente = [];
-let msgID = [];
-let encriptado = crypto.createHash('sha1');
-
-const socket = udp.createSocket('udp4');
-
-const dht = function() {
+//Definición de tipos
+//Tabla de hash distribuida
+const dht = function () {
     this.elementos = [];
 
-    this.agregar = function(hash, nombre, size, ip, puerto) {
+    this.agregar = function (hash, filename, filesize, ip, port) {
+        let retorno;
         let id = parseInt(hash.substring(0, 2), 16);
         let indice = this.elementos.findIndex(e => e.id == id);
         if (indice == -1) {
             indice = this.elementos.length;
             this.elementos.push(new elementoHash(hash));
-            this.elementos[indice].agregarArchivo(hash, nombre, size, ip, puerto);
-            this.elementos.sort(function(a, b) {
+            retorno = this.elementos[indice].agregarArchivo(hash, filename, filesize, ip, port);
+            this.elementos.sort(function (a, b) {
                 if (a.id < b.id)
                     return -1;
                 else
                     return 1;
             });
         } else
-            this.elementos[indice].agregarArchivo(hash, nombre, size, ip, puerto);
+            retorno = this.elementos[indice].agregarArchivo(hash, filename, filesize, ip, port);
+        return retorno;
     };
 
-    this.cantArchivos = function() {
+    this.cantArchivos = function () {
         let cont = 0;
         this.elementos.forEach((e, i, array) => { cont += e.archivos.length; });
         return cont;
     }
 
-    this.archivos = function() {
+    //Devuelve un arreglo con todos los archivos del Tracker en el formato usado por Scan
+    this.archivos = function () {
         let retorno = [];
         this.elementos.forEach((e, i, array) => {
             e.archivos.forEach((e1, i1, array1) => {
@@ -53,129 +49,152 @@ const dht = function() {
         return retorno;
     }
 
-    this.buscar = function(hash) {
+    this.buscar = function (hash) {
         let id = parseInt(hash.substring(0, 2), 16);
         let indice = this.elementos.findIndex(e => e.id == id);
         if (indice == -1)
             return -1;
         else
-        if (this.elementos[indice].archivos.findIndex(e => e.hash == hash) == -1)
-            return -1;
-        else
-            return 1;
+            if (this.elementos[indice].archivos.findIndex(e => e.hash == hash) == -1)
+                return -1;
+            else
+                return 1;
     }
 }
 
-dhtPropia = new dht();
-
-//listaNodosPares van a ser muchos
-const elementoHash = function(hash) {
+//Conjunto de archivos que comparten id (primeros dos caracteres del hash)
+const elementoHash = function (hash) {
     this.id = parseInt(hash.substring(0, 2), 16);
     this.archivos = [];
-    this.agregarArchivo = function(hash, nombre, size, ip, puerto) {
-        this.archivos.push(new archivo(hash, nombre, size, ip, puerto));
+    this.agregarArchivo = function (hash, filename, filesize, ip, port) {
+        let cant = this.archivos.length;
+        //Devuelve verdadero si realmente se agregó el archivo
+        if (cant != this.archivos.push(new archivo(hash, filename, filesize, ip, port)))
+            return true;
+        else
+            return false;
     }
 };
 
-const archivo = function(hash, nombre, size, ip, puerto) {
+//Archivo con su lista de pares
+const archivo = function (hash, filename, filesize, ip, port) {
     this.hash = hash;
-    this.filename = nombre;
-    this.filesize = size;
-    this.sockets = [];
-    this.agregarSocket = function(ip, puerto) {
-        this.sockets.push({
+    this.filename = filename;
+    this.filesize = filesize;
+    this.pares = [];
+    this.agregarPar = function (ip, puerto) {
+        this.pares.push({
             ip: ip,
             puerto: puerto
         })
     };
-    this.agregarSocket(ip, puerto);
+    this.agregarPar(ip, port);
 }
 
-//LEE JSON Y GUARDO EN VARIABLES. 
-function leerDatos() {
-    const datosJSON = fs.readFileSync('./cfg/JSONPRUEBA.json');
-    const data = JSON.parse(datosJSON);
-    ipSig = data.IPSiguienteNodo;
-    puertoSig = data.PORTSiguienteNodo;
-    ipAnt = data.IPAnteriorNodo;
-    puertoAnt = data.PORTAnteriorNodo;
-    cantNodos = data.CantNodos;
-    idNodo = data.IdNodo * 256 / cantNodos - 1; //limite mayor
-    idNodoAnt = idNodo - 256 / cantNodos; //limite menor
+let dhtPropia, dhtAnt, dhtSig;
+dhtPropia = new dht();
+
+let msgPendientes = [];
+
+const socket = udp.createSocket('udp4');
+let encriptado = crypto.createHash('sha1');
+
+let ipAnt, puertoAnt, ipSig, puertoSig;
+let originIP, originPort;
+let cantNodos;
+let idMin, idMax;
+
+//Lee el archivo de configuración
+//CAMBIAR NOMBRE POR FAVOR --- tracker.cfg???
+function leerCfg() {
+    const config = JSON.parse(fs.readFileSync('./cfg/JSONPRUEBA.json'));
+    ipSig = config.IPSiguienteNodo;
+    puertoSig = config.PORTSiguienteNodo;
+    ipAnt = config.IPAnteriorNodo;
+    puertoAnt = config.PORTAnteriorNodo;
+    cantNodos = config.CantNodos;
+    //Rango de ID de archivo correspondientes al tracker
+    //idMin < id <= idMax
+    idMax = config.IdNodo * 256 / cantNodos - 1; //limite mayor
+    idMin = idMax - 256 / cantNodos; //limite menor
 };
 
-//SERVIDOR
-
-//Printea mensaje recibido y muestra de donde viene.
-socket.on('message', function(msg, info) {
+//Manejo de mensajes entrantes
+socket.on('message', function (msg, info) {
     let objetoJSON = JSON.parse(msg.toString());
-    let tokens = objetoJSON.route.split('/');
 
+    //Si el mensaje tiene un campo originIP y no está correctamente definido, es su primer envío
+    //Reemplazar IP por la de la conexión entrante
     if (objetoJSON.originIP !== undefined && objetoJSON.originIP == '0.0.0.0')
         objetoJSON.originIP = info.address;
+
+    let tokens = objetoJSON.route.split('/');
     switch (tokens[1]) {
-        case 'file':
-            let hash = tokens[2].substring(0, 2);
-            let id = parseInt(hash, 16);
-            if (id <= idNodo && id > idNodoAnt) {
-                //caso de que le corresponde hacer algo con lo que viene
-                if (tokens.length > 3) {
-                    //FOUND O STORE
-                    let funcion = tokens[3];
-                    switch (funcion) {
+        case 'file': //Search, Store, addPar
+            let id = parseInt(tokens[2].substring(0, 2),16);
+            if (id <= idMax && id > idMin) { //Este tracker debe manejar la petición
+                if (tokens.length > 3) { //Store o addPar
+                    switch (tokens[3]) {
                         case 'store':
-                            dhtPropia.agregar(objetoJSON.body.id, objetoJSON.body.filename, objetoJSON.body.filesize, objetoJSON.body.nodeIP, objetoJSON.body.nodePort);
-                            console.log("GUARDÉ UN ARCHIVO A");
-                            console.log("Hash: " + objetoJSON.body.id);
-                            //GUARDA CON ESTO, CHEQUEAR INTERFAZ
-                            /*socket.send('STORE OK', objetoJSON.originPort, objetoJSON.originIP, (err) => {
+                            let objetoJSONConfirmacion = {
+                                messageId: objetoJSON.messageId,
+                                route: '/file/'+tokens[2]+'/store',
+                                status: false
+                            }
+                            let agrego = dhtPropia.agregar(objetoJSON.body.id, objetoJSON.body.filename, objetoJSON.body.filesize, objetoJSON.body.nodeIP, objetoJSON.body.nodePort);
+                            //Mensaje de confirmación
+                            //FALTA MANEJAR AFUERA
+                            if (agrego) {
+                                console.log("Se guardó un archivo con hash " + objetoJSON.body.id + '.');
+                                objetoJSONConfirmacion.status = true;
+                            } else
+                                console.log("Ya existía un archivo con hash " + objetoJSON.body.id + '.');
+                            socket.send(JSON.stringify(objetoJSONConfirmacion), objetoJSON.originPort, objectoJSON.originIP, (err) => {
                                 if (err)
-                                    socket.close('Error en tracker ' + idNodo + ' - enviando confirmación de Store.');
+                                    socket.close('Error en tracker ' + idMax + ' al enviar confirmación de Store.');
                             });
-                            */
                             break;
-                            //Dejamos CASE por si hay que agregar alguna función nueva para tracker.
+                        case 'addPar':
+                            //TO DO
+                            break;
                         default:
-                            console.log('Función en tracker no encontrada');
+                            console.log('Función ' + tokens[3] + ' no definida.');
                             break;
                     }
-                } else
-                //SEARCH
+                } else //Search
                 {
                     //GUARDA
                     //QUÉ HACER SI NO SE ENCONTRÓ?
-                    //DE DÓNDE SACAR LA IP DEL TRACKER?
+                    //NO MANDAR NADA?
                     let objetoJSONFound = {
                         messageId: objetoJSON.messageId,
                         route: '/file/' + tokens[2] + '/found',
                         body: {
                             id: tokens[2],
-                            trackerIP: '',
+                            trackerIP: '0.0.0.0', //La IP es reemplazada por el servidor que recibe el mensaje Found.
                             trackerPort: socket.address().port
                         }
                     }
                     if (dhtPropia.buscar(tokens[2]) == 1) {
-                        console.log("Encontro archivo hash: " + tokens[2]);
-                        console.log("ip: " + objetoJSON.originIP + " port: " + objetoJSON.originPort);
+                        console.log("Se encontro un archivo con hash " + tokens[2] + '.');
                         socket.send(JSON.stringify(objetoJSONFound), objetoJSON.originPort, objetoJSON.originIP, (err) => {
                             if (err)
-                                socket.close('Error en tracker ' + idNodo + ' - enviando confirmación de Search.');
+                                socket.close('Error en tracker ' + idNodo + ' al enviar mensaje Found.');
                         });
                     }
                 }
-                //LOGICA DE ALMACENAR ARCHIVO
             }
-            //ENVIAR A SIGUIENTE TRACKER
+            //Pasar la petición al siguiente Tracker
             else {
                 socket.send(JSON.stringify(objetoJSON), puertoSig, ipSig, (err) => {
                     if (err)
-                        socket.close('Error en tracker ' + idNodo + ' - enviando al siguiente.');
+                        socket.close('Error en tracker ' + idMax + ' - enviando al siguiente.');
                 });
                 console.log("pasé el mensaje");
             }
             break;
         case 'scan':
-            if (msgID.findIndex(e => e == objetoJSON.messageId) == -1) {
+            if (msgPendientes.findIndex(e => e == objetoJSON.messageId) == -1) {
                 let objetoJSONRespuesta = {
                     "messageId": objetoJSON.messageId,
                     "route": objetoJSON.route,
@@ -183,103 +202,56 @@ socket.on('message', function(msg, info) {
                     "originPort": objetoJSON.originPort,
                     "body": { files: [] }
                 }
-                if (objetoJSON.body === undefined) {
-                    msgID.push(objetoJSON.messageId);
+                if (objetoJSON.body === undefined) { //Este Tracker es el primero de la cola circular. Es el responsable de devolver la respuesta a la petición.
+                    msgPendientes.push(objetoJSON.messageId);
                     objetoJSON.originIP = info.address;
                 } else
                     objetoJSONRespuesta.body.files = objetoJSON.body.files;
-				dhtPropia.archivos().forEach((e,i,array)=>{objetoJSONRespuesta.body.files.push(e)});
-				socket.send(JSON.stringify(objetoJSONRespuesta), puertoSig, ipSig, (err) => {
+                dhtPropia.archivos().forEach((e, i, array) => { 
+                    objetoJSONRespuesta.body.files.push(e);
+                });
+                socket.send(JSON.stringify(objetoJSONRespuesta), puertoSig, ipSig, (err) => {
                     if (err)
-                        socket.close('Error en tracker ' + idNodo + ' - scan hacia siguiente.');
+                        socket.close('Error en Tracker ' + idMax + ' al enviar Scan hacia siguiente nodo.');
                 });
             } else {
-                msgID.splice(msgID.findIndex(e => e == objetoJSON.messageId), 1);
+                msgPendientes.splice(msgPendientes.findIndex(e => e == objetoJSON.messageId), 1);
                 socket.send(msg, objetoJSON.originPort, objetoJSON.originIP, (err) => {
                     if (err)
-                        socket.close('Error en tracker ' + idNodo + ' - scan hacia servidor.');
+                        socket.close('Error en Tracker ' + idMax + ' al devolver Scan hacia el servidor.');
                 });
             }
             break;
         case 'count':
-            if (msgID.findIndex(e => e == objetoJSON.messageId) == -1) {
-                if (objetoJSON.body.trackerCount == 0) {
-                    msgID.push(objetoJSON.messageId);
+            if (msgPendientes.findIndex(e => e == objetoJSON.messageId) == -1) {
+                if (objetoJSON.body.trackerCount == 0) { //Este Tracker es el primero de la cola circular. Es el responsable de devolver la respuesta a la petición.
+                    msgPendientes.push(objetoJSON.messageId);
                     objetoJSON.originIP = info.address;
                 }
                 objetoJSON.body.trackerCount++;
                 objetoJSON.body.fileCount += dhtPropia.cantArchivos();
                 socket.send(JSON.stringify(objetoJSON), puertoSig, ipSig, (err) => {
                     if (err)
-                        socket.close('Error en tracker ' + idNodo + ' - count.');
+                        socket.close('Error en tracker ' + idMax + ' al enviar Count al siguiente nodo.');
                 });
             } else {
-                msgID.splice(msgID.findIndex(e => e == objetoJSON.messageId), 1);
+                msgPendientes.splice(msgPendientes.findIndex(e => e == objetoJSON.messageId), 1);
                 socket.send(msg, objetoJSON.originPort, objetoJSON.originIP, (err) => {
                     if (err)
-                        socket.close('Error en tracker ' + idNodo + ' - count hacia servidor.');
+                        socket.close('Error en tracker ' + idMax + ' al devolver Count hacia el servidor.');
                 });
             }
             break;
         default:
-            console.log('ERROR CASE TOKEN 0 SERVIDOR DE TRACKER');
+            console.log('Error en tracker ' + idMax + '.');
             console.log('Objeto JSON recibido: ' + objetoJSON);
             break;
     }
 });
 
-leerDatos();
+leerCfg();
 
 socket.bind({
     port: 27015,
     exclusive: true
 });
-
-/*
-// ESTAS COSAS PUEDEN LLEGAR A SERVIR
-
-//Printea IP y puerto que el server está escuchando (Se puede hacer con un callback en bind, cumplen la misma función)
-socket.on('listening', () => {
-    const address = socket.address;
-    console.log('Servidor: Escuchando en IP:' + address.address + ', PORT:' + address.port+ '\n');
-});
-
-//Printea x error con su causa y cierra socket (CAMBIAR PARA RECUPERAR SOCKET EN CASO DE CAIDA) 
-socket.on('error', function (err) {
-    console.log('Servidor: Error:' + err.stack);
-    socket.close();
-});
-
-//El servidor escucha en PORT e IP address
-socket.bind({
-    port: 27015,
-    exclusive: true
-});
-
-
-  /* ESTO ES PARA IDENTIFICAR DE DONDE VINO
-     const address = socket.address;
-    console.log('Servidor: Escuchando en :' + address.address + ', PORT:' + address.port+ '\n');
-    console.log('Servidor: Información de donde viene el mensaje. IP:' + info.address + ', PORT:' + info.port + '\n');
-    socket.send();
-    */
-
-
-//CLIENTE 
-// creo un server socket
-
-/*
-//Printea mensaje que recibe de servidor.
-socket.on('message', function (msg, info) {
-    console.log('Cliente: Mensaje recibido del servidor: ' + msg.toString());
-    console.log('Cliente: Información de donde viene el mensaje. IP:' + info.address + ', PORT:' + info.port + '\n');
-});
-
-const mensaje = Buffer.from('Prueba de envio mensaje UDP');
-//Envia mensajes tanto a sockets conectados con socket.connect como a los especificados en los parametros. 
-//Parametros: 1.Mensaje seteado en buffer.from - 2.Puerto donde envio mensaje - 3.IP donde envio mensaje - 4.Callback por error. 
-socket.send(mensaje, 27015, '190.245.254.237', (err) => {
-    socket.close();
-  });
-
-*/

@@ -1,2 +1,5 @@
 node_modules/
 Tracker/cfg/
+package-lock.json
+.gitignore
+package.json
