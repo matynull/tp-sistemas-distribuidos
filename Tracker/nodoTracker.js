@@ -208,7 +208,7 @@ socket.on('message', function (msg, info) {
                             if (objetoJSONConfirmacion.status)
                                 console.log("Se agregó un par al archivo con hash " + objetoJSON.id + '.');
                             else
-                                console.log("No existía un archivo con hash " + objetoJSON.id + '.');
+                                console.log("Hubo un error al agregar un par al archivo con hash " + objetoJSON.id + '.');
                             socket.send(JSON.stringify(objetoJSONConfirmacion), 27018, objetoJSON.parIP, (err) => {
                                 if (err)
                                     socket.close('Error en tracker ' + idMax + ' al enviar confirmación de addPar.');

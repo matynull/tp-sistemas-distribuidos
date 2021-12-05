@@ -229,7 +229,7 @@ function descargar(info) {
         while (descargando)
             delay(500);
 
-        console.log('salió del delay');
+        //console.log('salió del delay');
 
         if (!termino) {
             if (pares.length == 0) {
@@ -367,8 +367,9 @@ socketTrackers.on('message', (msg, info) => {
     let mensajeID = objetoJSON.messageId;
     let indexRespuesta = respuestasID.findIndex((e) => e.id == mensajeID);
     if (indexRespuesta != -1) {
-        if (objetoJSON.body.trackerIP !== undefined && objetoJSON.body.trackerIP === '0.0.0.0')
+        if (objetoJSON.route.includes('found') && objetoJSON.body.trackerIP === '0.0.0.0')
             objetoJSON.body.trackerIP = info.address;
+
         respuestasID[indexRespuesta] = {
             id: mensajeID,
             Response: objetoJSON
