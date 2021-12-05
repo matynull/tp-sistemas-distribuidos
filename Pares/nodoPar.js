@@ -56,7 +56,7 @@ function conexionEntrantePar(socket) {
     });
 
     socket.on('end', (data) => {
-        
+
         console.log('llegó petición');
 
         let peticion = JSON.parse(datos);
@@ -80,6 +80,9 @@ function conexionEntrantePar(socket) {
             });
 
             stream.on('end', () => {
+
+                console.log("terminó de enviar");
+
                 socket.end();
                 indiceTransferencia = subidas.findIndex(e => e.hash == peticion.hash);
                 subidas[indiceTransferencia].terminar();
@@ -149,17 +152,25 @@ async function leerConsola() {
                         let indice;
                         let indiceArchivos = archivos.findIndex(e => e.hash == info.hash);
                         await search(info.hash, info.trackerIP, info.trackerPort);
+
+                        console.log("salió del await search");
+
                         indice = respuestasID.findIndex((e) => e.id == idSave);
+
+                        console.log("entrando al delay de leerConsola");
+
                         while (respuestasID[indice].Response === undefined)
                             await delay(50);
+
+                        console.log("salió del delay de leerConsola");
+
                         let responseSearch = respuestasID[indice].Response;
                         if (responseSearch.body.id !== undefined) {
                             //Se encontró el archivo en el Tracker
-                            if (indiceArchivos == -1) {
+                            if (indiceArchivos == -1)
                                 descargar(responseSearch);
-                            } else {
+                            else
                                 addPar(responseSearch);
-                            }
                         }
                         else
                             console.log('No existe el archivo para el torrente asociado.');
@@ -217,6 +228,9 @@ function descargar(info) {
     while (!termino) {
         while (descargando)
             delay(500);
+
+        console.log('salió del delay');
+
         if (!termino) {
             if (pares.length == 0) {
                 console.log('El archivo ' + filename + ' no tiene pares disponibles.');
@@ -289,8 +303,14 @@ async function addPar(info) {
     let idSave = msgID;
     await addParPromise(info.body);
     let indice = respuestasID.findIndex((e) => e.id == idSave);
+
+    console.log('por entrar al while addPar');
+
     while (respuestasID[indice].Response === undefined)
         await delay(50);
+
+    console.log('salió del while addPar');
+
     let responseAddPar = respuestasID[indice].Response;
     //Se recibió la respuesta del addPar
     if (responseAddPar.status == true)
@@ -348,22 +368,26 @@ socketTrackers.on('message', (msg, info) => {
             id: mensajeID,
             Response: objetoJSON
         };
+
+        console.log(objetoJSON);
+
     } else {
         console.log('Llegó un mensaje con ID desconocido.');
     }
 })
 
 function checkearArchivos() {
+    console.log('Leyendo archivos...');
     fs.readdir('./Archivos', function (err, filenames) {
-        if (err) {
+        if (err)
             console.log('Error al leer archivos.');
-            return;
+        else {
+            filenames.forEach(function (filename) {
+                encriptado = crypto.createHash('sha1');
+                const hash = encriptado.update(filename + fs.statSync('./Archivos/' + filename).size).digest('hex');
+                archivos.push({ dir: './Archivos/' + filename, hash: hash });
+            });
         }
-        filenames.forEach(function (filename) {
-            encriptado = crypto.createHash('sha1');
-            const hash = encriptado.update(filename + fs.statSync('./Archivos/' + filename).size).digest('hex');
-            archivos.push({ dir: './Archivos/' + filename, hash: hash });
-        });
     });
 };
 
