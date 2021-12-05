@@ -201,7 +201,7 @@ socket.on('message', function (msg, info) {
                                 route: '/file/' + tokens[2] + '/addPar',
                                 status: false
                             }
-                            if (objetoJSON.parIP !== undefined && objetoJSON.parIP == '0.0.0.0')
+                            if (objetoJSON.parIP == '0.0.0.0')
                                 objetoJSON.parIP = info.address;
                             objetoJSONConfirmacion.status = dhtPropia.agregarPar(objetoJSON.id,objetoJSON.parIP,objetoJSON.parPort);
                             //Mensaje de confirmación
@@ -209,7 +209,7 @@ socket.on('message', function (msg, info) {
                                 console.log("Se agregó un par al archivo con hash " + objetoJSON.id + '.');
                             else
                                 console.log("No existía un archivo con hash " + objetoJSON.id + '.');
-                            socket.send(JSON.stringify(objetoJSONConfirmacion), objetoJSON.parPort, objetoJSON.parIP, (err) => {
+                            socket.send(JSON.stringify(objetoJSONConfirmacion), 27018, objetoJSON.parIP, (err) => {
                                 if (err)
                                     socket.close('Error en tracker ' + idMax + ' al enviar confirmación de addPar.');
                             });
@@ -249,7 +249,7 @@ socket.on('message', function (msg, info) {
                     if (err)
                         socket.close('Error en tracker ' + idMax + ' - enviando al siguiente.');
                 });
-                console.log("Se reenvió un mensaje al siguiente Tracker,");
+                console.log("Se reenvió un mensaje al siguiente Tracker.");
             }
             break;
         case 'scan':

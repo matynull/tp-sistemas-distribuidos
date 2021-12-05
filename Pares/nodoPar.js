@@ -330,6 +330,9 @@ function addParPromise(info) {
             parIP: '0.0.0.0',
             parPort: 27019,
         }
+
+        console.log("addParPromise");
+
         socketTrackers.send(JSON.stringify(msg), info.trackerPort, info.trackerIP, (err) => {
             if (!err) {
                 respuestasID.push({ id: msgID });
