@@ -39,49 +39,35 @@ const puertoPares = 27019;
 let serverPares = net.createServer(conexionEntrantePar);
 
 function conexionEntrantePar(socket) {
-    let datos = '';
+    let peticion;
+
     console.log('Conexion establecida con ' + socket.remoteAddress);
 
-    socket.on('error', (err) => { console.log("entro al error entrante" + err) });
-
     socket.on('data', (data) => {
-        datos += data;
-    });
-
-    socket.on('end', (data) => {
-
-        console.log('llegó petición');
-
-        let peticion = JSON.parse(datos);
+        peticion = JSON.parse(data);
         let indiceArchivo = archivos.findIndex(e => e.hash == peticion.hash);
         let indiceTransferencia;
         let filename = archivos[indiceArchivo].dir.split("/")[2];
         if (indiceArchivo != -1) {
             //El archivo está disponible para enviar
-
-            console.log('está para enviar');
-
             subidas.push(new transferencia(peticion.hash, filename, fs.statSync(archivos[indiceArchivo].dir).size, socket.remoteAddress));
             let stream = fs.createReadStream(archivos[indiceArchivo].dir);
 
             stream.on('readable', () => {
                 let chunk;
-                while (chunk = this.read())
+                while (chunk = stream.read()) {
+                    indiceTransferencia = subidas.findIndex(e => e.hash == peticion.hash);
+                    subidas[indiceTransferencia].actualizar(chunk.length);
                     socket.write(chunk);
-                indiceTransferencia = subidas.findIndex(e => e.hash == peticion.hash);
-                subidas[indiceTransferencia].actualizar(chunk.length);
+                } 
             });
 
             stream.on('end', () => {
-
-                console.log("terminó de enviar");
-
-                socket.end();
                 indiceTransferencia = subidas.findIndex(e => e.hash == peticion.hash);
                 subidas[indiceTransferencia].terminar();
+                socket.end();
             });
-        } else
-            socket.end();
+        }
     });
 
     socket.on('error', () => {

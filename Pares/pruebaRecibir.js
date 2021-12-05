@@ -55,20 +55,14 @@ async function descargar(info) {
     let indice;
     while (!termino) {
         while (descargando)
-            delay(500);
-
-        //console.log('salió del delay');
+            await delay(500);
 
         if (!termino) {
             if (pares.length == 0) {
                 console.log('El archivo ' + filename + ' no tiene pares disponibles.');
-
-                console.log(info.route);
-
                 termino = true;
             }
             else {
-                console.log("entró en el else");
                 descargando = true;
                 //Elige un par de la lista al azar para distribuir carga
                 r = Math.trunc(Math.random() * pares.length);
@@ -82,7 +76,7 @@ async function descargar(info) {
                         hash: info.body.id
                     }));
                     //Crea el archivo
-                    writeStream = fs.createWriteStream('./Archivos/' + filename);
+                    writeStream = fs.createWriteStream('./Archivos/' + filename + 'Recibido');
                 });
 
                 //Transfiere los datos recibidos al archivo creado
@@ -95,14 +89,14 @@ async function descargar(info) {
                 //Chequea que se haya descargado correctamente
                 socketPares.on('end', () => {
                     encriptado = crypto.createHash('sha1');
-                    const hash = encriptado.update(filename + fs.statSync('./Archivos/' + filename).size).digest('hex');
+                    const hash = encriptado.update(filename + fs.statSync('./Archivos/' + filename + 'Recibido').size).digest('hex');
                     if (hash === info.body.id) {//Se descargó el archivo correctamente
                         console.log('Se terminó de descargar el archivo ' + filename);
                         archivos.push({ dir: './Archivos/' + filename, hash: hash });
                         indice = descargas.findIndex(e => e.hash == hash);
                         descargas[indice].terminar();
                         //Se agrega como par al archivo
-                        addPar(info);
+                        //addPar(info);
                         termino = true;
                     } else
                         errorDescarga();
@@ -115,7 +109,7 @@ async function descargar(info) {
 
                 function errorDescarga() {
                     console.log('Hubo un error al descargar el archivo ' + filename + ' del par ' + pares[r].parIP);
-                    fs.unlinksync('./Archivos/' + filename);
+                    fs.unlinkSync('./Archivos/' + filename + 'Recibido');
                     indice = descargas.findIndex(e => e.hash == hash);
                     if (indice != -1)
                         descargas.splice(indice, 1);
@@ -194,4 +188,4 @@ let info = {
 
 descargar(info);
 
-//leerConsola();
+leerConsola();
