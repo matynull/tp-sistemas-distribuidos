@@ -31,7 +31,7 @@ let msgID = 0;
 let archivos = [];
 let descargas = [];
 let subidas = [];
-let encriptado = crypto.createHash('sha1');
+let encriptado;
 
 //La conexión con Trackers es por UDP, la conexión con Pares es por TCP
 //Se usan puertos distintos para evitar confusión
@@ -43,13 +43,12 @@ let socketTrackers = udp.createSocket('udp4');
 let socketPares = new net.Socket();
 
 let serverPares = net.createServer(conexionEntrantePar);
-serverPares.listen(puertoPares, () => {
-    console.log('Escuchando conexiones entrantes en el puerto ' + puertoPares + '.');
-});
 
 function conexionEntrantePar(socket) {
     let datos = '';
     console.log('Conexion establecida con ' + socket.remoteAddress);
+
+    socket.on('error',(err)=>{console.log("entro al error entrante" + err)});
 
     socket.on('data', (data) => {
         datos += data;
@@ -402,3 +401,7 @@ checkearArchivos();
 leerConsola();
 
 socketTrackers.bind(27018);
+
+serverPares.listen(puertoPares, () => {
+    console.log('Escuchando conexiones entrantes en el puerto ' + puertoPares + '.');
+});
