@@ -56,12 +56,18 @@ function conexionEntrantePar(socket) {
     });
 
     socket.on('end', (data) => {
+        
+        console.log('llegó petición');
+
         let peticion = JSON.parse(datos);
         let indiceArchivo = archivos.findIndex(e => e.hash == peticion.hash);
         let indiceTransferencia;
         let filename = archivos[indiceArchivo].dir.split("/")[2];
         if (indiceArchivo != -1) {
             //El archivo está disponible para enviar
+
+            console.log('está para enviar');
+
             subidas.push(new transferencia(peticion.hash, filename, fs.statSync(archivos[indiceArchivo].dir).size, socket.remoteAddress));
             let stream = fs.createReadStream(archivos[indiceArchivo].dir);
 
@@ -302,9 +308,8 @@ function addParPromise(info) {
             filename: info.filename,
             filesize: info.filesize,
             parIP: '0.0.0.0',
-            parPort: 27018,
+            parPort: 27019,
         }
-        console.log(info.trackerPort);
         socketTrackers.send(JSON.stringify(msg), info.trackerPort, info.trackerIP, (err) => {
             if (!err) {
                 respuestasID.push({ id: msgID });
