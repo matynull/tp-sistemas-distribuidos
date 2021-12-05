@@ -5,10 +5,53 @@ const crypto = require('crypto');
 const readline = require('readline');
 
 let msgID = 0;
-let socket = udp.createSocket('udp4');
-socket.bind(27018);
-let seeding = [];
-checkSeedingFiles();
+let archivos = [];
+
+//const tamChunk = 1024;
+
+//La conexión con Trackers es por UDP, la conexión con Pares es por TCP
+//Se usan puertos distintos para evitar confusión
+const puertoTrackers = 27018;
+
+let socketTrackers = udp.createSocket('udp4');
+
+const puertoPares = 27019;
+let serverPares = net.createServer(conexionEntrantePar);
+serverPares.listen(puertoPares,() => {
+    console.log("Escuchando conexiones entrantes en el puerto " + puertoPares + ".");
+});
+
+function conexionEntrantePar(socket) {
+    console.log("Conexion establecida con " + socket.remoteAddress);
+    
+    let datos = "";
+    socket.on('data', (data) => {
+        datos += data;
+    });
+
+    socket.on('end',(data) => {
+        let peticion = JSON.parse(datos);
+        let indice = archivos.findIndex(e => e.hash == peticion.hash);
+        if (indice == -1) {
+            console.log("no hay archivo xd");
+            //No tenías el archivo
+        } else {
+            socket.pipe(process.stdout);
+            let stream = fs.createReadStream(archivos[indice].dir);
+            stream.on("readable", () => {
+                let chunk;
+                while (chunk = this.read())
+                    socket.write(chunk);
+            });
+        }
+        socket.close();
+    });
+    socket.on('close', () => {
+        console.log("Conexión terminada con " + socket.remoteAddress);
+    });
+}
+
+let socketPares = new net.Socket();
 
 const rl = readline.createInterface({
     input: process.stdin,
@@ -45,7 +88,7 @@ var pregunta = function () {
                     let info = JSON.parse(data);
                     let idSave = msgID;
                     let indice;
-                    let indiceSeeding = seeding.findIndex(e => e == info.hash);
+                    let indiceArchivos = archivos.findIndex(e => e.hash == info.hash);
                     await search(info.hash, info.trackerIP, info.trackerPort);
                     indice = respuestasID.findIndex((e) => e.id == idSave);
                     while (respuestasID[indice].Response === undefined) {
@@ -54,22 +97,10 @@ var pregunta = function () {
                     let responseSearch = respuestasID[indice].Response;
                     if (responseSearch.body.id !== undefined) {
                         //Se recibió la respuesta del Search
-                        if (indiceSeeding == -1) {
-                            console.log('Empieza la descarga');
+                        if (indiceArchivos == -1) {
+                            descargar(responseSearch);
                         } else {
-                            //agregarse a si mismo como par
-                            //mover esto a una función así lo podemos llamar
-                            idSave = msgID;
-                            await addPar(responseSearch.body);
-                            indice = respuestasID.findIndex((e) => e.id == idSave);
-                            while (respuestasID[indice].Response === undefined)
-                                await delay(50);
-                            let responseAddPar = respuestasID[indice].Response;
-                            //Se recibió la respuesta del addPar
-                            if (responseAddPar.status == true)
-                                console.log("Se agregó el par al archivo con hash " + responseSearch.body.id + ".");
-                            else
-                                console.log("No se agregó el par al archivo con hash " + responseSearch.body.id + ".");
+                            addPar(responseSearch);
                         }
                     }
                     else
@@ -82,12 +113,39 @@ var pregunta = function () {
         else
             console.log('El archivo debe tener extensión .torrente');
     }
-})();
+});
 
+function descargar(info) {
+    let aceptado = false;
+    let r;
+    let pares = info.body.pares;
+    if (pares.length == 0) 
+        console.log("El archivo a descargar no tiene pares disponibles.");
+    else {
+        while (!aceptado) {
+            r = Math.trunc(Math.random() * pares.length);
 
-//stdin.addListener("data", function (res)) 
+            if (true) // OJO CON ESE TRUE
+                pares.splice(pares.findIndex(e => e==r),1);
+        }
+    }
+}
 
 function addPar(info) {
+    let idSave = msgID;
+    await addParPromise(info.body);
+    let indice = respuestasID.findIndex((e) => e.id == idSave);
+    while (respuestasID[indice].Response === undefined)
+        await delay(50);
+    let responseAddPar = respuestasID[indice].Response;
+    //Se recibió la respuesta del addPar
+    if (responseAddPar.status == true)
+        console.log("Se agregó el par al archivo con hash " + info.body.id + ".");
+    else
+        console.log("No se agregó el par al archivo con hash " + info.body.id + ".");
+}
+
+function addParPromise(info) {
     return new Promise((resolve) => {
         let msg = {
             messageId: msgID,
@@ -99,7 +157,7 @@ function addPar(info) {
             parPort: 27018,
         }
         console.log(info.trackerPort);
-        socket.send(JSON.stringify(msg), info.trackerPort, info.trackerIP, (err) => {
+        socketTrackers.send(JSON.stringify(msg), info.trackerPort, info.trackerIP, (err) => {
             if (!err) {
                 respuestasID.push({ id: msgID });
                 msgID += 2;
@@ -112,7 +170,7 @@ function addPar(info) {
 
 function search(hash, ip, port) {
     return new Promise((resolve) => {
-        socket.send(JSON.stringify({
+        socketTrackers.send(JSON.stringify({
             messageId: msgID,
             route: '/file/' + hash,
             originIP: '0.0.0.0',
@@ -128,7 +186,7 @@ function search(hash, ip, port) {
     })
 }
 
-socket.on("message", (msg, info) => {
+socketTrackers.on("message", (msg, info) => {
     let objetoJSON = JSON.parse(msg.toString());
     let mensajeID = objetoJSON.messageId;
     let indexRespuesta = respuestasID.findIndex((e) => e.id == mensajeID);
@@ -142,7 +200,7 @@ socket.on("message", (msg, info) => {
     }
 })
 
-function checkSeedingFiles() {
+function checkearArchivos() {
     let encriptado = crypto.createHash('sha1');
     fs.readdir("./Archivos", function (err, filenames) {
         if (err) {
@@ -151,7 +209,13 @@ function checkSeedingFiles() {
         }
         filenames.forEach(function (filename) {
             const hash = encriptado.update(filename + fs.statSync("./Archivos/" + filename).size).digest('hex');
-            seeding.push(hash);
+            archivos.push({dir: "./Archivos/" + filename, hash: hash});
         });
     });
 }
+
+checkearArchivos();
+
+leerRuta();
+
+socketTrackers.bind(27018);
