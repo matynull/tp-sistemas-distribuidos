@@ -331,7 +331,7 @@ function addParPromise(info) {
             parPort: 27019,
         }
 
-        console.log("addParPromise");
+        console.log("addParPromise " + info.trackerIP);
 
         socketTrackers.send(JSON.stringify(msg), info.trackerPort, info.trackerIP, (err) => {
             if (!err) {
@@ -367,6 +367,8 @@ socketTrackers.on('message', (msg, info) => {
     let mensajeID = objetoJSON.messageId;
     let indexRespuesta = respuestasID.findIndex((e) => e.id == mensajeID);
     if (indexRespuesta != -1) {
+        if (objetoJSON.body.trackerIP !== undefined && objetoJSON.body.trackerIP === '0.0.0.0')
+            objetoJSON.body.trackerIP = info.address;
         respuestasID[indexRespuesta] = {
             id: mensajeID,
             Response: objetoJSON
