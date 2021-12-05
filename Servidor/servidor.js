@@ -109,7 +109,7 @@ socket.on('message', function (msg, info) {
 
 socket.bind(puertoSV);
 const portTracker = 27015; //CFGEAR ESTO PLS
-const ipTracker = 'localhost';
+const ipTracker = '190.190.36.80';
 
 function store(formulario) {
     return new Promise((resolve) => {

@@ -150,7 +150,7 @@ let idMin, idMax;
 //Lee el archivo de configuración
 //CAMBIAR NOMBRE POR FAVOR --- tracker.cfg???
 function leerCfg() {
-    const config = JSON.parse(fs.readFileSync('./cfg/JSONPRUEBA.json'));
+    const config = JSON.parse(fs.readFileSync('./cfg/tracker.cfg'));
     ipSig = config.IPSiguienteNodo;
     puertoSig = config.PORTSiguienteNodo;
     ipAnt = config.IPAnteriorNodo;
