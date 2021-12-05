@@ -120,8 +120,8 @@ const archivo = function (hash, filename, filesize, ip, port) {
         if (indice == -1)
         {
             let cantNueva = this.pares.push({
-                ip: ip,
-                puerto: puerto
+                parIP: ip,
+                parPort: puerto
             });
             if (cantVieja == cantNueva)
                 return false;

@@ -240,6 +240,7 @@ function descargar(info) {
                 termino = true;
             }
             else {
+                descargando = true;
                 //Elige un par de la lista al azar para distribuir carga
                 r = Math.trunc(Math.random() * pares.length);
 
@@ -247,7 +248,6 @@ function descargar(info) {
                 socketPares.connect(pares[r].parPort, pares[r].parIP, () => {
                     console.log('Conexion establecida con ' + pares[r].parIP + ' - Comenzando descarga de ' + filename);
                     descargas.push(new transferencia(hash, filename, info.body.filesize, pares[r].parIP));
-                    descargando = true;
                     socketPares.write(JSON.stringify({
                         type: 'GET FILE',
                         hash: info.body.id
