@@ -144,12 +144,11 @@ async function leerConsola() {
                         let indiceArchivos = archivos.findIndex(e => e.hash == info.hash);
                         await search(info.hash, info.trackerIP, info.trackerPort);
                         indice = respuestasID.findIndex((e) => e.id == idSave);
-                        while (respuestasID[indice].Response === undefined) {
+                        while (respuestasID[indice].Response === undefined)
                             await delay(50);
-                        }
                         let responseSearch = respuestasID[indice].Response;
                         if (responseSearch.body.id !== undefined) {
-                            //Se recibió la respuesta del Search
+                            //Se encontró el archivo en el Tracker
                             if (indiceArchivos == -1) {
                                 descargar(responseSearch);
                             } else {
@@ -213,8 +212,13 @@ function descargar(info) {
         while (descargando)
             delay(500);
         if (!termino) {
-            if (pares.length == 0)
+            if (pares.length == 0) {
                 console.log('El archivo ' + filename + ' no tiene pares disponibles.');
+
+                console.log(info.route);
+
+                termino = true;
+            }
             else {
                 //Elige un par de la lista al azar para distribuir carga
                 r = Math.trunc(Math.random() * pares.length);
