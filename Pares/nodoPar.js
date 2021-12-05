@@ -4,28 +4,33 @@ const fs = require('fs');
 const crypto = require('crypto');
 const readline = require('readline');
 
-const descarga = function (hash, filename, filesize) {
+const transferencia = function (hash, filename, filesize, parIP) {
     this.hash = hash;
     this.filename = filename;
     this.filesize = filesize;
+    this.parIP = parIP;
     this.descargado = 0;
     this.inicio = Date.now();
     this.velocidad = 0;
     this.porcentaje = 0;
     this.actualizar = function (avance) {
+        let ahora = Date.now();
         this.descargado += avance;
         this.porcentaje = Math.round(1000 * (this.descargado / this.filesize)) / 10; //Redondeado a 1 decimal
-        this.velocidad = 8000 * this.descargado / (Date.now() - this.inicio); //En bit/s, redondeado a 1 decimal
+        this.velocidad = 8000 * avance / (ahora - this.inicio); //En bit/s, redondeado a 1 decimal
+        this.inicio = ahora;
     };
     this.terminar = function () {
         this.descargado = this.filesize;
         this.porcentaje = 100;
+        this.velocidad = 0;
     };
 }
 
 let msgID = 0;
 let archivos = [];
 let descargas = [];
+let subidas = [];
 let encriptado = crypto.createHash('sha1');
 
 //La conexión con Trackers es por UDP, la conexión con Pares es por TCP
@@ -43,32 +48,51 @@ serverPares.listen(puertoPares, () => {
 });
 
 function conexionEntrantePar(socket) {
+    let datos = '';
     console.log('Conexion establecida con ' + socket.remoteAddress);
 
-    let datos = '';
     socket.on('data', (data) => {
         datos += data;
     });
 
     socket.on('end', (data) => {
         let peticion = JSON.parse(datos);
-        let indice = archivos.findIndex(e => e.hash == peticion.hash);
-        if (indice == -1) {
-            console.log('no hay archivo xd');
-            //No tenías el archivo
-        } else {
-            socket.pipe(process.stdout);
-            let stream = fs.createReadStream(archivos[indice].dir);
+        let indiceArchivo = archivos.findIndex(e => e.hash == peticion.hash);
+        let indiceTransferencia;
+        let filename = archivos[indiceArchivo].dir.split("/")[2];
+        if (indiceArchivo != -1) {
+            //El archivo está disponible para enviar
+            subidas.push(new transferencia(peticion.hash, filename, fs.statSync(archivos[indiceArchivo].dir).size, socket.remoteAddress));
+            let stream = fs.createReadStream(archivos[indiceArchivo].dir);
+
             stream.on('readable', () => {
                 let chunk;
                 while (chunk = this.read())
                     socket.write(chunk);
+                indiceTransferencia = subidas.findIndex(e => e.hash == peticion.hash);
+                subidas[indiceTransferencia].actualizar(chunk.length);
             });
-        }
-        socket.close();
+
+            stream.on('end', () => {
+                socket.end();
+                indiceTransferencia = subidas.findIndex(e => e.hash == peticion.hash);
+                subidas[indiceTransferencia].terminar();
+            });
+        } else
+            socket.end();
     });
+
+    socket.on('error', () => {
+        console.log('Hubo un error al enviar el archivo ' + filename + ' al par ' + socket.remoteAddress);
+        indiceTransferencia = subidas.findIndex(e => e.hash == peticion.hash);
+        if (indice != -1)
+            subidas.splice(indiceTransferencia, 1);
+    });
+
     socket.on('close', () => {
         console.log('Conexión terminada con ' + socket.remoteAddress);
+        indiceTransferencia = subidas.findIndex(e => e.hash == peticion.hash);
+        subidas.splice(indiceTransferencia, 1);
     });
 }
 
@@ -95,12 +119,19 @@ var pregunta = function () {
     });
 };
 
-(async function leerRuta() {
+async function leerConsola() {
     let rta;
     while (true) {
         rta = await pregunta();
-        if (rta.toLowerCase() === 'status') //Mostrar estado de todas las descargas
-            mostrarDescargas();
+        if (rta.toLowerCase() === 'status') {//Mostrar estado de todas las descargas
+            console.log("*****");
+            console.log("Descargas:");
+            mostrarEstado(descargas);
+            console.log("*****");
+            console.log("Subidas:");
+            mostrarEstado(subidas);
+            console.log("*****");
+        }
         else { //Se ingresó una ruta
             if (rta.includes(' '))
                 rta = rta.substring(1, rta.length - 1);
@@ -136,12 +167,12 @@ var pregunta = function () {
                 console.log('El archivo debe tener extensión .torrente');
         }
     }
-});
+};
 
-function mostrarDescargas() {
-    if (descargas.length > 0) {
+function mostrarEstado(a) {
+    if (a.length > 0) {
         let tabla = [];
-        descargas.forEach(e => {
+        a.forEach(e => {
             let size;
             let velocidad;
             if (e.filesize < 1024)
@@ -160,12 +191,13 @@ function mostrarDescargas() {
                 "Archivo": e.filename,
                 "Tamaño": size,
                 "Descargado": e.porcentaje + "%",
-                "Velocidad promedio": velocidad
+                "Velocidad": velocidad,
+                "Par": e.parIP
             });
         });
         console.table(tabla);
     } else
-        console.log("No hay descargas activas.");
+        console.log("No hay transferencias activas.");
 };
 
 function descargar(info) {
@@ -180,67 +212,70 @@ function descargar(info) {
     while (!termino) {
         while (descargando)
             delay(500);
-        if (pares.length == 0)
-            console.log('El archivo ' + filename + ' no tiene pares disponibles.');
-        else {
-            //Elige un par de la lista al azar para distribuir carga
-            r = Math.trunc(Math.random() * pares.length);
+        if (!termino) {
+            if (pares.length == 0)
+                console.log('El archivo ' + filename + ' no tiene pares disponibles.');
+            else {
+                //Elige un par de la lista al azar para distribuir carga
+                r = Math.trunc(Math.random() * pares.length);
 
-            //Establece conexión con el par elegido
-            socketPares.connect(pares[r].port, pares[r].ip, () => {
-                console.log('Conexion establecida con ' + pares[r].ip + ' - Comenzando descarga de ' + filename);
-                descargas.push(new descarga(hash,filename,info.body.filesize));
-                descargando = true;
-                socketPares.write(JSON.stringify({
-                    type: 'GET FILE',
-                    hash: info.body.id
-                }));
-                //Crea el archivo
-                writeStream = fs.createWriteStream('./Archivos/' + filename);
-            });
+                //Establece conexión con el par elegido
+                socketPares.connect(pares[r].parPort, pares[r].parIP, () => {
+                    console.log('Conexion establecida con ' + pares[r].parIP + ' - Comenzando descarga de ' + filename);
+                    descargas.push(new transferencia(hash, filename, info.body.filesize, pares[r].parIP));
+                    descargando = true;
+                    socketPares.write(JSON.stringify({
+                        type: 'GET FILE',
+                        hash: info.body.id
+                    }));
+                    //Crea el archivo
+                    writeStream = fs.createWriteStream('./Archivos/' + filename);
+                });
 
-            //Transfiere los datos recibidos al archivo creado
-            socketPares.on('data', (data) => {
-                writeStream.write(data);
-                indice = descargas.findIndex(e => e.hash == hash);
-                descargas[indice].actualizar(data.length);
-            });
-
-            //Chequea que se haya descargado correctamente
-            socketPares.on('end', () => {
-                const hash = encriptado.update(filename + fs.statSync('./Archivos/' + filename).size).digest('hex');
-                if (hash === info.body.id) {//Se descargó el archivo correctamente
-                    console.log('Se terminó de descargar el archivo ' + filename);
-                    archivos.push({ dir: './Archivos/' + filename, hash: hash });
+                //Transfiere los datos recibidos al archivo creado
+                socketPares.on('data', (data) => {
+                    writeStream.write(data);
                     indice = descargas.findIndex(e => e.hash == hash);
-                    descargas[indice].terminar();
-                    //Se agrega como par al archivo
-                    addPar(info);
-                    termino = true;
-                } else
+                    descargas[indice].actualizar(data.length);
+                });
+
+                //Chequea que se haya descargado correctamente
+                socketPares.on('end', () => {
+                    encriptado = crypto.createHash('sha1');
+                    const hash = encriptado.update(filename + fs.statSync('./Archivos/' + filename).size).digest('hex');
+                    if (hash === info.body.id) {//Se descargó el archivo correctamente
+                        console.log('Se terminó de descargar el archivo ' + filename);
+                        archivos.push({ dir: './Archivos/' + filename, hash: hash });
+                        indice = descargas.findIndex(e => e.hash == hash);
+                        descargas[indice].terminar();
+                        //Se agrega como par al archivo
+                        addPar(info);
+                        termino = true;
+                    } else
+                        errorDescarga();
+                    descargando = false;
+                });
+
+                socketPares.on('error', () => {
                     errorDescarga();
-                descargando = false;
-            });
+                });
 
-            socketPares.on('error', () => {
-                errorDescarga();
-            });
-
-            function errorDescarga() {
-                console.log('Hubo un error al descargar el archivo ' + filename + ' del par ' + pares[r].ip);
-                fs.unlinksync('./Archivos/' + filename);
-                indice = descargas.findIndex(e => e.hash == hash);
-                if (indice != -1)
-                    descargas.splice(indice,1);
-                console.log('Reintentando con otro par...');
-                pares.splice(pares.findIndex(e => e == r), 1);
-                descargando = false;
-            };
+                function errorDescarga() {
+                    console.log('Hubo un error al descargar el archivo ' + filename + ' del par ' + pares[r].parIP);
+                    fs.unlinksync('./Archivos/' + filename);
+                    indice = descargas.findIndex(e => e.hash == hash);
+                    if (indice != -1)
+                        descargas.splice(indice, 1);
+                    console.log('Reintentando con otro par...');
+                    pares.splice(pares.findIndex(e => e == r), 1);
+                    descargando = false;
+                };
+            }
         }
     }
 }
 
-function addPar(info) {
+async function addPar(info) {
     let idSave = msgID;
     await addParPromise(info.body);
     let indice = respuestasID.findIndex((e) => e.id == idSave);
@@ -316,14 +351,15 @@ function checkearArchivos() {
             return;
         }
         filenames.forEach(function (filename) {
+            encriptado = crypto.createHash('sha1');
             const hash = encriptado.update(filename + fs.statSync('./Archivos/' + filename).size).digest('hex');
             archivos.push({ dir: './Archivos/' + filename, hash: hash });
         });
     });
-}
+};
 
 checkearArchivos();
 
-leerRuta();
+leerConsola();
 
 socketTrackers.bind(27018);
