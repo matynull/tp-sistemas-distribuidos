@@ -71,48 +71,49 @@ socket.on('message', function (msg, info) {
     let mensaje = JSON.parse(msg.toString());
     let mensajeID = mensaje.messageId;
     let indice = msgPendientes.findIndex((e) => e.id == mensajeID);
-    if (indice != -1) {
-        if (mensaje.route === '/scan')
-            msgPendientes[indice] = {
-                id: mensajeID,
-                mensaje: mensaje.body.files
-            }
-        else if (mensaje.route === '/join') {
-            mensaje.trackerIP = info.address;
-            mensaje.id = parseInt(encriptado.update(mensaje.trackerIP + ':' + mensaje.trackerPort).digest('hex').substring(0, 2), 16);
-            if (ipTracker === '0.0.0.0') {
-                ipTracker = mensaje.trackerIP;
-                puertoTracker = mensaje.trackerPort;
-                idTracker = mensaje.id;  
-            }
-            socket.send(JSON.stringify(mensaje), puertoTracker, ipTracker, (err) => {
-                console.log("Hubo un error al enviar Join al primer Tracker.");
-            });
-            if (mensaje.id < idTracker) {
-                ipTracker = mensaje.trackerIP;
-                puertoTracker = mensaje.trackerPort;
-                idTracker = mensaje.id;
-            }
-        } else
-            if (mensaje.route.includes('/found'))
+    if (mensaje.route === '/join') {
+        mensaje.trackerIP = info.address;
+        mensaje.id = parseInt(encriptado.update(mensaje.trackerIP + ':' + mensaje.trackerPort).digest('hex').substring(0, 2), 16);
+        if (ipTracker === '0.0.0.0') {
+            ipTracker = mensaje.trackerIP;
+            puertoTracker = mensaje.trackerPort;
+            idTracker = mensaje.id;
+        }
+        socket.send(JSON.stringify(mensaje), puertoTracker, ipTracker, (err) => {
+            console.log("Hubo un error al enviar Join al primer Tracker.");
+        });
+        if (mensaje.id < idTracker) {
+            ipTracker = mensaje.trackerIP;
+            puertoTracker = mensaje.trackerPort;
+            idTracker = mensaje.id;
+        }
+    } else
+        if (indice != -1) {
+            if (mensaje.route === '/scan')
                 msgPendientes[indice] = {
                     id: mensajeID,
-                    mensaje: {
-                        hash: mensaje.body.id,
-                        trackerIP: info.address,
-                        trackerPort: info.port
+                    mensaje: mensaje.body.files
+                }
+            else
+                if (mensaje.route.includes('/found'))
+                    msgPendientes[indice] = {
+                        id: mensajeID,
+                        mensaje: {
+                            hash: mensaje.body.id,
+                            trackerIP: info.address,
+                            trackerPort: info.port
+                        }
                     }
+                else if (mensaje.route.includes('/store')) { //Confirmación de Store - ???
+                    msgPendientes[indice] = {
+                        id: mensajeID,
+                        mensaje: mensaje // Mando mensaje completo, podría mandar solo status
+                    }
+                    console.log("Llego mensaje de confirmación de Store con id " + mensajeID + ": " + mensaje.status);
                 }
-            else if (mensaje.route.includes('/store')) { //Confirmación de Store - ???
-                msgPendientes[indice] = {
-                    id: mensajeID,
-                    mensaje: mensaje // Mando mensaje completo, podría mandar solo status
-                }
-                console.log("Llego mensaje de confirmación de Store con id " + mensajeID + ": " + mensaje.status);
-            }
-    } else {
-        console.log("Llegó un mensaje con ID desconocido.");
-    }
+        } else {
+            console.log("Llegó un mensaje con ID desconocido.");
+        }
     console.log(msgPendientes[indice]);
 });
 
