@@ -169,7 +169,7 @@ let idTracker;
 let puertoTracker;
 let idAnt, ipAnt, puertoAnt, idSig, ipSig, puertoSig;
 let limiteMenor, limiteMayor;
-let solo=false;
+let solo = false;
 
 //Lee el archivo de configuración
 function leerCfg() {
@@ -308,19 +308,20 @@ function count(objetoJSON, info, tokens) {
 
 function join(objetoJSON, info, tokens) {
     if (limiteMenor < objetoJSON.id && objetoJSON.id <= limiteMayor) {
-        console.log("entro lim may: " + limiteMayor + " lim men: " + limiteMenor);
         if (solo) {
-            solo=false;
+            solo = false;
+            ipSig = objetoJSON.trackerIP;
+            puertoSig = objetoJSON.trackerPort;
             if (objetoJSON.id > idTracker)
-                limiteMayor = objetoJSON.id;
+                limiteMayor = idTracker;
             else
                 limiteMenor = objetoJSON.id;
         }
         if (ipAnt === '0.0.0.0') {
-            solo=true;
+            solo = true;
             idTracker = objetoJSON.id;
             idAnt = objetoJSON.id;
-        } 
+        }
         if (idAnt >= idTracker)
             limiteMenor = -1;
         else
@@ -336,17 +337,20 @@ function join(objetoJSON, info, tokens) {
             antIP: ipAnt,
             antPort: puertoAnt
         };
+        console.log("id ANT: "+idAnt);
         idAnt = objetoJSON.id;
         socket.send(JSON.stringify(msg), puertoAnt, ipAnt, (err) => {
             if (err)
                 console.log("Hubo un error al enviar joinResponse.");
         });
         console.log("Se aceptó la solicitud de unirse del Tracker " + idAnt);
-    } else
+    } else {
+        console.log("puerto sig " + puertoSig + " ip sig" + ipSig);
         socket.send(JSON.stringify(objetoJSON), puertoSig, ipSig, (err) => {
             if (err)
                 console.log("Hubo un error al reenviar Join al siguiente tracker.");
         });
+    }
 };
 
 function joinResponse(objetoJSON, info, tokens) {
