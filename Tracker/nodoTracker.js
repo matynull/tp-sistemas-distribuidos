@@ -61,6 +61,18 @@ const dht = function () {
                 return 1;
     }
 
+    this.bodyFound= function(hash){
+        let retorno = {};
+        let id = parseInt(hash.substring(0, 2), 16);
+        let indice = this.elementos.findIndex(e => e.id == id);
+        if (indice != -1){
+            let indiceArch = this.elementos[indice].archivos.findIndex(e => e.hash == hash);
+            if ( indiceArch != -1)
+                retorno = this.elementos[indice].archivos[indiceArch].bodyFound;
+        }
+        return retorno;
+    }
+
     this.agregarPar = function(hash,ip,puerto) {
         let id = parseInt(hash.substring(0, 2), 16);
         let indice1 = this.elementos.findIndex(e => e.id == id);
@@ -114,9 +126,19 @@ const archivo = function (hash, filename, filesize, ip, port) {
     this.filename = filename;
     this.filesize = filesize;
     this.pares = [];
+    this.bodyFound = function(){
+        return {
+            id: hash,
+            filename: this.filename,
+            filesize: this.filesize,
+            trackerIP:'0.0.0.0',
+            trackerPort:0,
+            pares: this.pares
+        }
+    }
     this.agregarPar = function (ip, puerto) {
         const cantVieja = this.pares.length;
-        let indice = this.pares.findIndex(e => e.ip == ip);
+        let indice = this.pares.findIndex(e => e.parIP == ip);
         if (indice == -1)
         {
             let cantNueva = this.pares.push({
@@ -229,12 +251,7 @@ socket.on('message', function (msg, info) {
                     }
                     if (dhtPropia.buscar(tokens[2]) == 1) {
                         console.log("Se encontró un archivo con hash " + tokens[2] + '.');
-                        objetoJSONFound.body = {
-                            id: tokens[2],
-                            trackerIP: '0.0.0.0', //La IP es reemplazada por el servidor que recibe el mensaje Found
-                            trackerPort: socket.address().port,
-                            pares: dhtPropia.pares(tokens[2])
-                        }
+                        objetoJSONFound.body = dhtPropia.bodyFound(tokens[2]);
                     } else
                         console.log("No se encontró ningún archivo con hash " + tokens[2] + '.');
                     socket.send(JSON.stringify(objetoJSONFound), objetoJSON.originPort, objetoJSON.originIP, (err) => {

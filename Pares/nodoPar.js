@@ -210,6 +210,7 @@ async function descargar(info) {
     let filename = info.body.filename;
     let hash = info.body.id;
     let indice;
+    console.log(info);
     while (!termino) {
         while (descargando)
             await delay(500);
