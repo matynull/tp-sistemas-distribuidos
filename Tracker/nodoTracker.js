@@ -169,6 +169,7 @@ let idTracker;
 let puertoTracker;
 let idAnt, ipAnt, puertoAnt, idSig, ipSig, puertoSig;
 let limiteMenor, limiteMayor;
+let solo=false;
 
 //Lee el archivo de configuración
 function leerCfg() {
@@ -187,8 +188,8 @@ function configurar() {
         trackerPort: puertoTracker
     };
     ipAnt = '0.0.0.0';
-    limiteMenor=-1;
-    limiteMayor=255;
+    limiteMenor = -1;
+    limiteMayor = 255;
     console.log("Intentando unirse a la red de Trackers...");
     socket.send(JSON.stringify(msg), puertoServer, ipServer, (err) => {
         if (err)
@@ -307,11 +308,19 @@ function count(objetoJSON, info, tokens) {
 
 function join(objetoJSON, info, tokens) {
     if (limiteMenor < objetoJSON.id && objetoJSON.id <= limiteMayor) {
-        console.log("entro lim may: "+ limiteMayor +" lim men: "+ limiteMenor);
-        if (ipAnt === '0.0.0.0'){ 
+        console.log("entro lim may: " + limiteMayor + " lim men: " + limiteMenor);
+        if (solo) {
+            solo=false;
+            if (objetoJSON.id > idTracker)
+                limiteMayor = objetoJSON.id;
+            else
+                limiteMenor = objetoJSON.id;
+        }
+        if (ipAnt === '0.0.0.0') {
+            solo=true;
             idTracker = objetoJSON.id;
             idAnt = objetoJSON.id;
-        }  
+        } 
         if (idAnt >= idTracker)
             limiteMenor = -1;
         else
@@ -377,7 +386,7 @@ function update(objetoJSON, info, tokens) {
 
 function reqUpdate(objetoJSON, info, tokens) {
     idSig = objetoJSON.id;
-    console.log("idSig: " + idSig + "idTracker: "+ idTracker);
+    console.log("idSig: " + idSig + " idTracker: " + idTracker);
     if (idSig <= idTracker)
         limiteMayor = 255;
     else
