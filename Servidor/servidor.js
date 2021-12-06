@@ -68,6 +68,7 @@ let puertoServerTrackers, ipTracker, puertoTracker, idTracker;
 
 
 socket.on('message', function (msg, info) {
+    let encriptado = crypto.createHash('sha1');
     let mensaje = JSON.parse(msg.toString());
     let mensajeID = mensaje.messageId;
     let indice = msgPendientes.findIndex((e) => e.id == mensajeID);
@@ -80,7 +81,8 @@ socket.on('message', function (msg, info) {
             idTracker = mensaje.id;
         }
         socket.send(JSON.stringify(mensaje), puertoTracker, ipTracker, (err) => {
-            console.log("Hubo un error al enviar Join al primer Tracker.");
+            if(err)
+                console.log("Hubo un error al enviar Join al primer Tracker.");
         });
         if (mensaje.id < idTracker) {
             ipTracker = mensaje.trackerIP;
@@ -114,7 +116,6 @@ socket.on('message', function (msg, info) {
         } else {
             console.log("Llegó un mensaje con ID desconocido.");
         }
-    console.log(msgPendientes[indice]);
 });
 
 function store(formulario) {

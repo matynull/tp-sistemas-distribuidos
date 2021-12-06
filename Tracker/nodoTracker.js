@@ -186,6 +186,9 @@ function configurar() {
         trackerIP: '0.0.0.0',
         trackerPort: puertoTracker
     };
+    ipAnt = '0.0.0.0';
+    limiteMenor=-1;
+    limiteMayor=255;
     console.log("Intentando unirse a la red de Trackers...");
     socket.send(JSON.stringify(msg), puertoServer, ipServer, (err) => {
         if (err)
@@ -304,7 +307,9 @@ function count(objetoJSON, info, tokens) {
 
 function join(objetoJSON, info, tokens) {
     if (limiteMenor < objetoJSON.id && objetoJSON.id <= limiteMayor) {
-        idAnt = objetoJSON.id;
+        if (ipAnt === '0.0.0.0') 
+            idTracker = objetoJSON.id;
+        idAnt = objetoJSON.id;      
         if (idAnt >= idTracker)
             limiteMenor = -1;
         else
@@ -318,15 +323,15 @@ function join(objetoJSON, info, tokens) {
             sigPort: puertoTracker,
             antId: idAnt,
             antIP: ipAnt,
-            antPort: portAnt
+            antPort: puertoAnt
         };
         socket.send(JSON.stringify(msg), puertoAnt, ipAnt, (err) => {
             if (err)
                 console.log("Hubo un error al enviar joinResponse.");
         });
-        console.log("Se aceptó la solicitud de unirse del Tracker " + idAnt.toString(16));
+        console.log("Se aceptó la solicitud de unirse del Tracker " + idAnt);
     } else
-        socket.send(objetoJSON, puertoSig, ipSig, (err) => {
+        socket.send(JSON.stringify(objetoJSON), puertoSig, ipSig, (err) => {
             if (err)
                 console.log("Hubo un error al reenviar Join al siguiente tracker.");
         });
@@ -351,8 +356,8 @@ function joinResponse(objetoJSON, info, tokens) {
     });
 
     console.log("Tracker incorporado a la red.");
-    console.log("Tracker anterior: " + idAnt.toString(16));
-    console.log("Tracker siguiente: " + idSig.toString(16));
+    console.log("Tracker anterior: " + idAnt);
+    console.log("Tracker siguiente: " + idSig);
 };
 
 function update(objetoJSON, info, tokens) {
@@ -482,6 +487,13 @@ socket.bind({
     exclusive: true
 });
 
+console.log("Escuchando en el puerto 27015.");
 configurar();
 
-console.log("Escuchando en el puerto 27015.");
+
+
+function delay(delay) {
+    return new Promise(resolve => {
+        setTimeout(() => { resolve(); }, delay);
+    });
+}
