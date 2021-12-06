@@ -1,4 +1,5 @@
 //SHA1
+const { count } = require('console');
 const crypto = require('crypto');
 //UDP y FS para leer archivo
 const udp = require('dgram');
@@ -61,19 +62,19 @@ const dht = function () {
                 return 1;
     }
 
-    this.bodyFound = function(hash){
+    this.bodyFound = function (hash) {
         let retorno = {};
         let id = parseInt(hash.substring(0, 2), 16);
         let indice = this.elementos.findIndex(e => e.id == id);
-        if (indice != -1){
+        if (indice != -1) {
             let indiceArch = this.elementos[indice].archivos.findIndex(e => e.hash == hash);
-            if ( indiceArch != -1)
+            if (indiceArch != -1)
                 retorno = this.elementos[indice].archivos[indiceArch].bodyFound();
         }
         return retorno;
     }
 
-    this.agregarPar = function(hash,ip,puerto) {
+    this.agregarPar = function (hash, ip, puerto) {
         let id = parseInt(hash.substring(0, 2), 16);
         let indice1 = this.elementos.findIndex(e => e.id == id);
         if (indice1 == -1)
@@ -83,11 +84,11 @@ const dht = function () {
             if (indice2 == -1)
                 return false;
             else
-                return this.elementos[indice1].archivos[indice2].agregarPar(ip,puerto);
+                return this.elementos[indice1].archivos[indice2].agregarPar(ip, puerto);
         }
     };
 
-    this.pares = function(hash) {
+    this.pares = function (hash) {
         let id = parseInt(hash.substring(0, 2), 16);
         let indice1 = this.elementos.findIndex(e => e.id == id);
         if (indice1 == -1)
@@ -106,10 +107,11 @@ const dht = function () {
 const elementoHash = function (hash) {
     this.id = parseInt(hash.substring(0, 2), 16);
     this.archivos = [];
+
     this.agregarArchivo = function (hash, filename, filesize, ip, port) {
         let cant = this.archivos.length;
         //Devuelve verdadero si realmente se agregó el archivo
-        let indice = this.archivos.findIndex(e=> e.hash = hash);
+        let indice = this.archivos.findIndex(e => e.hash = hash);
         if (indice == -1)
             if (cant != this.archivos.push(new archivo(hash, filename, filesize, ip, port)))
                 return true;
@@ -126,21 +128,22 @@ const archivo = function (hash, filename, filesize, ip, port) {
     this.filename = filename;
     this.filesize = filesize;
     this.pares = [];
-    this.bodyFound = function(){
+
+    this.bodyFound = function () {
         return {
             id: hash,
             filename: this.filename,
             filesize: this.filesize,
-            trackerIP:'0.0.0.0',
-            trackerPort:0,
+            trackerIP: '0.0.0.0',
+            trackerPort: 0,
             pares: this.pares
         }
     }
+
     this.agregarPar = function (ip, puerto) {
         const cantVieja = this.pares.length;
         let indice = this.pares.findIndex(e => e.parIP == ip);
-        if (indice == -1)
-        {
+        if (indice == -1) {
             let cantNueva = this.pares.push({
                 parIP: ip,
                 parPort: puerto
@@ -153,40 +156,253 @@ const archivo = function (hash, filename, filesize, ip, port) {
         else
             return false;
     };
-    //this.agregarPar(ip, port);
 }
 
-let dhtPropia, dhtAnt, dhtSig;
-dhtPropia = new dht();
+let dhtTracker, dhtAnt;
+dhtTracker = new dht();
 
 let msgPendientes = [];
 
 const socket = udp.createSocket('udp4');
 let encriptado = crypto.createHash('sha1');
 
-let ipAnt, puertoAnt, ipSig, puertoSig;
-let originIP, originPort;
-let cantNodos;
-let idMin, idMax;
+let idTracker;
+let puertoTracker;
+let idAnt, ipAnt, puertoAnt, idSig, ipSig, puertoSig;
+let limiteMenor, limiteMayor;
 
-//Lee el archivo de configuración
-function leerCfg() {
-    const config = JSON.parse(fs.readFileSync('./cfg/tracker.cfg'));
-    ipSig = config.IPSiguienteNodo;
-    puertoSig = config.PORTSiguienteNodo;
-    ipAnt = config.IPAnteriorNodo;
-    puertoAnt = config.PORTAnteriorNodo;
-    cantNodos = config.CantNodos;
-    //Rango de ID de archivo correspondientes al tracker
-    //idMin < id <= idMax
-    idMax = config.IdNodo * 256 / cantNodos - 1; //limite mayor
-    idMin = idMax - 256 / cantNodos; //limite menor
+//Lee el archivo de configuración e inicializa el Tracker
+function configurar() {
+    const config = JSON.parse(fs.readFileSync('./tracker.cfg'));
+    ipServer = config.ipServer;
+    puertoServer = config.puertoServer;
+    puertoTracker = config.puertoTracker;
+    let msg = {
+        route: '/join',
+        id: '',
+        trackerIP: '0.0.0.0',
+        trackerPort: puertoTracker
+    };
+    console.log("Intentando unirse a la red de Trackers...");
+    socket.send(JSON.stringify(msg), puertoServer, ipServer, (err) => {
+        if (err)
+            console.log("Hubo un error al intentar unirse a la red.");
+    });
+};
+
+function store(objetoJSON, info, tokens) {
+    let objetoJSONConfirmacion = {
+        messageId: objetoJSON.messageId,
+        route: '/file/' + tokens[2] + '/store',
+        status: false
+    }
+    objetoJSONConfirmacion.status = dhtTracker.agregar(objetoJSON.body.id, objetoJSON.body.filename, objetoJSON.body.filesize, objetoJSON.body.parIP, objetoJSON.body.parPort);
+    //Mensaje de confirmación
+    if (objetoJSONConfirmacion.status)
+        console.log("Se guardó un archivo con hash " + objetoJSON.body.id + '.');
+    else
+        console.log("Ya existía un archivo con hash " + objetoJSON.body.id + '.');
+    socket.send(JSON.stringify(objetoJSONConfirmacion), objetoJSON.originPort, objetoJSON.originIP, (err) => {
+        if (err)
+            socket.close('Error en tracker ' + idMax + ' al enviar confirmación de Store.');
+    });
+};
+
+function addPar(objetoJSON, info, tokens) {
+    let objetoJSONConfirmacion = {
+        messageId: objetoJSON.messageId,
+        route: '/file/' + tokens[2] + '/addPar',
+        status: false
+    }
+    if (objetoJSON.parIP == '0.0.0.0')
+        objetoJSON.parIP = info.address;
+    objetoJSONConfirmacion.status = dhtTracker.agregarPar(objetoJSON.id, objetoJSON.parIP, objetoJSON.parPort);
+    //Mensaje de confirmación
+    if (objetoJSONConfirmacion.status)
+        console.log("Se agregó un par al archivo con hash " + objetoJSON.id + '.');
+    else
+        console.log("Hubo un error al agregar un par al archivo con hash " + objetoJSON.id + '.');
+    socket.send(JSON.stringify(objetoJSONConfirmacion), 27018, objetoJSON.parIP, (err) => {
+        if (err)
+            socket.close('Error en tracker ' + idMax + ' al enviar confirmación de addPar.');
+    });
+};
+
+function search(objetoJSON, info, tokens) {
+    //Si no se encuentra el archivo buscado, se devuelve Found con body vacío
+    let objetoJSONFound = {
+        messageId: objetoJSON.messageId,
+        route: '/file/' + tokens[2] + '/found',
+        body: {
+        }
+    }
+    if (dhtTracker.buscar(tokens[2]) == 1) {
+        console.log("Se encontró un archivo con hash " + tokens[2] + '.');
+        objetoJSONFound.body = dhtTracker.bodyFound(tokens[2]);
+        objetoJSONFound.body.trackerPort = socket.address().port;
+    } else
+        console.log("No se encontró ningún archivo con hash " + tokens[2] + '.');
+    socket.send(JSON.stringify(objetoJSONFound), objetoJSON.originPort, objetoJSON.originIP, (err) => {
+        if (err)
+            socket.close('Error en tracker ' + idNodo + ' al enviar mensaje Found.');
+    });
+};
+
+function scan(objetoJSON, info, tokens) {
+    if (msgPendientes.findIndex(e => e == objetoJSON.messageId) == -1) {
+        let objetoJSONRespuesta = {
+            "messageId": objetoJSON.messageId,
+            "route": objetoJSON.route,
+            "originIP": objetoJSON.originIP,
+            "originPort": objetoJSON.originPort,
+            "body": { files: [] }
+        }
+        if (objetoJSON.body === undefined) { //Este Tracker es el primero de la cola circular. Es el responsable de devolver la respuesta a la petición.
+            msgPendientes.push(objetoJSON.messageId);
+            objetoJSON.originIP = info.address;
+        } else
+            objetoJSONRespuesta.body.files = objetoJSON.body.files;
+        dhtTracker.archivos().forEach((e, i, array) => {
+            objetoJSONRespuesta.body.files.push(e);
+        });
+        socket.send(JSON.stringify(objetoJSONRespuesta), puertoSig, ipSig, (err) => {
+            if (err)
+                socket.close('Error en Tracker ' + idMax + ' al enviar Scan hacia siguiente nodo.');
+        });
+    } else {
+        msgPendientes.splice(msgPendientes.findIndex(e => e == objetoJSON.messageId), 1);
+        socket.send(msg, objetoJSON.originPort, objetoJSON.originIP, (err) => {
+            if (err)
+                socket.close('Error en Tracker ' + idMax + ' al devolver Scan hacia el servidor.');
+        });
+    }
+};
+
+function count(objetoJSON, info, tokens) {
+    if (msgPendientes.findIndex(e => e == objetoJSON.messageId) == -1) {
+        if (objetoJSON.body.trackerCount == 0) { //Este Tracker es el primero de la cola circular. Es el responsable de devolver la respuesta a la petición.
+            msgPendientes.push(objetoJSON.messageId);
+            objetoJSON.originIP = info.address;
+        }
+        objetoJSON.body.trackerCount++;
+        objetoJSON.body.fileCount += dhtTracker.cantArchivos();
+        socket.send(JSON.stringify(objetoJSON), puertoSig, ipSig, (err) => {
+            if (err)
+                socket.close('Error en tracker ' + idMax + ' al enviar Count al siguiente nodo.');
+        });
+    } else {
+        msgPendientes.splice(msgPendientes.findIndex(e => e == objetoJSON.messageId), 1);
+        socket.send(msg, objetoJSON.originPort, objetoJSON.originIP, (err) => {
+            if (err)
+                socket.close('Error en tracker ' + idMax + ' al devolver Count hacia el servidor.');
+        });
+    }
+};
+
+function join(objetoJSON, info, tokens) {
+    if (limiteMenor < objetoJSON.id && objetoJSON.id <= limiteMayor) {
+        idAnt = objetoJSON.id;
+        if (idAnt >= idTracker)
+            limiteMenor = -1;
+        else
+            limiteMenor = idAnt;
+        ipAnt = objetoJSON.trackerIP;
+        puertoAnt = objetoJSON.trackerPort;
+        let msg = {
+            route: '/joinResponse',
+            id: idAnt,
+            sigId: idTracker,
+            sigPort: puertoTracker,
+            antId: idAnt,
+            antIP: ipAnt,
+            antPort: portAnt
+        };
+        socket.send(JSON.stringify(msg), puertoAnt, ipAnt, (err) => {
+            if (err)
+                console.log("Hubo un error al enviar joinResponse.");
+        });
+        console.log("Se aceptó la solicitud de unirse del Tracker " + idAnt.toString(16));
+    } else
+        socket.send(objetoJSON, puertoSig, ipSig, (err) => {
+            if (err)
+                console.log("Hubo un error al reenviar Join al siguiente tracker.");
+        });
+};
+
+function joinResponse(objetoJSON, info, tokens) {
+    idTracker = objetoJSON.id;
+    idSig = objetoJSON.sigId;
+    ipSig = info.address;
+    puertoSig = objetoJSON.sigPort;
+    idAnt = objetoJSON.antId;
+    ipAnt = objetoJSON.antIP;
+    puertoAnt = objetoJSON.antPort;
+    let msg = {
+        route: '/reqUpdate',
+        id: idTracker,
+        port: puertoTracker
+    };
+    socket.send(JSON.stringify(msg), puertoAnt, ipAnt, (err) => {
+        if (err)
+            console.log("Hubo un error al enviar el primer reqUpdate.");
+    });
+
+    console.log("Tracker incorporado a la red.");
+    console.log("Tracker anterior: " + idAnt.toString(16));
+    console.log("Tracker siguiente: " + idSig.toString(16));
+};
+
+function update(objetoJSON, info, tokens) {
+    console.log(dht);
+
+    idAnt = objetoJSON.id;
+    if (idAnt >= idTracker)
+        limiteMenor = -1;
+    else
+        limiteMenor = idAnt;
+    ipAnt = info.address;
+    puertoAnt = objetoJSON.antPort;
+    dhtAnt = objetoJSON.dht;
+    console.log("Se actualizo la DHT.");
+
+    console.log(dht);
+};
+
+function reqUpdate(objetoJSON, info, tokens) {
+    idSig = objetoJSON.id;
+    if (idSig <= idTracker)
+        limiteMayor = 255;
+    else
+        limiteMayor = idSig;
+    ipSig = info.address;
+    puertoSig = objetoJSON.port;
+    let msg = {
+        route: '/update',
+        id: idTracker,
+        antPort: puertoTracker,
+        dht: dhtTracker
+    };
+    socket.send(JSON.stringify(msg), puertoSig, ipSig, (err) => {
+        if (err)
+            console.log("Hubo un error al enviar Update.");
+    });
+};
+
+function leave(objetoJSON, info, tokens) {
+
+};
+
+function heartbeat(objetoJSON, info, tokens) {
+
+};
+
+function missing(objetoJSON, info, tokens) {
+
 };
 
 //Manejo de mensajes entrantes
 socket.on('message', function (msg, info) {
     let objetoJSON = JSON.parse(msg.toString());
-    let objetoJSONConfirmacion;
 
     //Si el mensaje tiene un campo originIP y no está correctamente definido, es su primer envío
     //Reemplazar IP por la de la conexión entrante
@@ -197,69 +413,21 @@ socket.on('message', function (msg, info) {
     switch (tokens[1]) {
         case 'file': //Search, Store, addPar
             let id = parseInt(tokens[2].substring(0, 2), 16);
-            if (id <= idMax && id > idMin) { //Este tracker debe manejar la petición
+            if (id <= limiteMayor && id > limiteMenor) { //Este tracker debe manejar la petición
                 if (tokens.length > 3) { //Store o addPar
                     switch (tokens[3]) {
                         case 'store':
-                            objetoJSONConfirmacion = {
-                                messageId: objetoJSON.messageId,
-                                route: '/file/' + tokens[2] + '/store',
-                                status: false
-                            }
-                            objetoJSONConfirmacion.status = dhtPropia.agregar(objetoJSON.body.id, objetoJSON.body.filename, objetoJSON.body.filesize, objetoJSON.body.parIP, objetoJSON.body.parPort);
-                            //Mensaje de confirmación
-                            if (objetoJSONConfirmacion.status)
-                                console.log("Se guardó un archivo con hash " + objetoJSON.body.id + '.');
-                            else
-                                console.log("Ya existía un archivo con hash " + objetoJSON.body.id + '.');
-                            socket.send(JSON.stringify(objetoJSONConfirmacion), objetoJSON.originPort, objetoJSON.originIP, (err) => {
-                                if (err)
-                                    socket.close('Error en tracker ' + idMax + ' al enviar confirmación de Store.');
-                            });
+                            store(objetoJSON, info, tokens);
                             break;
                         case 'addPar':
-                            objetoJSONConfirmacion = {
-                                messageId: objetoJSON.messageId,
-                                route: '/file/' + tokens[2] + '/addPar',
-                                status: false
-                            }
-                            if (objetoJSON.parIP == '0.0.0.0')
-                                objetoJSON.parIP = info.address;
-                            objetoJSONConfirmacion.status = dhtPropia.agregarPar(objetoJSON.id,objetoJSON.parIP,objetoJSON.parPort);
-                            //Mensaje de confirmación
-                            if (objetoJSONConfirmacion.status)
-                                console.log("Se agregó un par al archivo con hash " + objetoJSON.id + '.');
-                            else
-                                console.log("Hubo un error al agregar un par al archivo con hash " + objetoJSON.id + '.');
-                            socket.send(JSON.stringify(objetoJSONConfirmacion), 27018, objetoJSON.parIP, (err) => {
-                                if (err)
-                                    socket.close('Error en tracker ' + idMax + ' al enviar confirmación de addPar.');
-                            });
+                            addPar(objetoJSON, info, tokens);
                             break;
                         default:
                             console.log('Función ' + tokens[3] + ' no definida.');
                             break;
                     }
                 } else //Search
-                {
-                    //Si no se encuentra el archivo buscado, se devuelve Found con body vacío
-                    let objetoJSONFound = {
-                        messageId: objetoJSON.messageId,
-                        route: '/file/' + tokens[2] + '/found',
-                        body: {
-                        }
-                    }
-                    if (dhtPropia.buscar(tokens[2]) == 1) {
-                        console.log("Se encontró un archivo con hash " + tokens[2] + '.');
-                        objetoJSONFound.body = dhtPropia.bodyFound(tokens[2]);
-                        objetoJSONFound.body.trackerPort = socket.address().port;
-                    } else
-                        console.log("No se encontró ningún archivo con hash " + tokens[2] + '.');
-                    socket.send(JSON.stringify(objetoJSONFound), objetoJSON.originPort, objetoJSON.originIP, (err) => {
-                        if (err)
-                            socket.close('Error en tracker ' + idNodo + ' al enviar mensaje Found.');
-                    });
-                }
+                    search(objetoJSON, info, tokens);
             }
             //Pasar la petición al siguiente Tracker
             else {
@@ -271,53 +439,31 @@ socket.on('message', function (msg, info) {
             }
             break;
         case 'scan':
-            if (msgPendientes.findIndex(e => e == objetoJSON.messageId) == -1) {
-                let objetoJSONRespuesta = {
-                    "messageId": objetoJSON.messageId,
-                    "route": objetoJSON.route,
-                    "originIP": objetoJSON.originIP,
-                    "originPort": objetoJSON.originPort,
-                    "body": { files: [] }
-                }
-                if (objetoJSON.body === undefined) { //Este Tracker es el primero de la cola circular. Es el responsable de devolver la respuesta a la petición.
-                    msgPendientes.push(objetoJSON.messageId);
-                    objetoJSON.originIP = info.address;
-                } else
-                    objetoJSONRespuesta.body.files = objetoJSON.body.files;
-                dhtPropia.archivos().forEach((e, i, array) => {
-                    objetoJSONRespuesta.body.files.push(e);
-                });
-                socket.send(JSON.stringify(objetoJSONRespuesta), puertoSig, ipSig, (err) => {
-                    if (err)
-                        socket.close('Error en Tracker ' + idMax + ' al enviar Scan hacia siguiente nodo.');
-                });
-            } else {
-                msgPendientes.splice(msgPendientes.findIndex(e => e == objetoJSON.messageId), 1);
-                socket.send(msg, objetoJSON.originPort, objetoJSON.originIP, (err) => {
-                    if (err)
-                        socket.close('Error en Tracker ' + idMax + ' al devolver Scan hacia el servidor.');
-                });
-            }
+            scan(objetoJSON, info, tokens);
             break;
         case 'count':
-            if (msgPendientes.findIndex(e => e == objetoJSON.messageId) == -1) {
-                if (objetoJSON.body.trackerCount == 0) { //Este Tracker es el primero de la cola circular. Es el responsable de devolver la respuesta a la petición.
-                    msgPendientes.push(objetoJSON.messageId);
-                    objetoJSON.originIP = info.address;
-                }
-                objetoJSON.body.trackerCount++;
-                objetoJSON.body.fileCount += dhtPropia.cantArchivos();
-                socket.send(JSON.stringify(objetoJSON), puertoSig, ipSig, (err) => {
-                    if (err)
-                        socket.close('Error en tracker ' + idMax + ' al enviar Count al siguiente nodo.');
-                });
-            } else {
-                msgPendientes.splice(msgPendientes.findIndex(e => e == objetoJSON.messageId), 1);
-                socket.send(msg, objetoJSON.originPort, objetoJSON.originIP, (err) => {
-                    if (err)
-                        socket.close('Error en tracker ' + idMax + ' al devolver Count hacia el servidor.');
-                });
-            }
+            count(objetoJSON, info, tokens);
+            break;
+        case 'join':
+            join(objetoJSON, info, tokens);
+            break;
+        case 'joinResponse':
+            joinResponse(objetoJSON, info, tokens);
+            break;
+        case 'update':
+            update(objetoJSON, info, tokens);
+            break;
+        case 'reqUpdate':
+            reqUpdate(objetoJSON, info, tokens);
+            break;
+        case 'leave':
+            leave(objetoJSON, info, tokens);
+            break;
+        case 'heartbeat':
+            heartbeat(objetoJSON, info, tokens);
+            break;
+        case 'missing':
+            missing(objetoJSON, info, tokens);
             break;
         default:
             console.log('Error en tracker ' + idMax + '.');
@@ -326,7 +472,7 @@ socket.on('message', function (msg, info) {
     }
 });
 
-leerCfg();
+configurar();
 
 socket.bind({
     port: 27015,
