@@ -510,11 +510,11 @@ function leave(objetoJSON, info, tokens) {
     //Agrega los archivos "abandonados" al DHT
     dhtTracker.agregarDHT(objetoJSON.dht);
     //Actualiza nodo anterior
-    idAnt = objetoJSON.antId;
-    ipAnt = objetoJSON.antIP;
-    puertoAnt = objetoJSON.antPort;
-    if (idTracker == idSig) {
+    if (idAnt == idSig) {
         solo = true;
+        idAnt = objetoJSON.antId;
+        ipAnt = objetoJSON.antIP;
+        puertoAnt = objetoJSON.antPort;
         idSig = idAnt;
         ipSig = ipAnt;
         puertoSig = puertoAnt;
