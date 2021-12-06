@@ -240,7 +240,7 @@ async function descargar(info) {
                 socketPares.on('data', (data) => {
                     writeStream.write(data);
                     indice = descargas.findIndex(e => e.hash == hash);
-                    descargas[indice].actualizar(data.length);
+                    descargas[indice].avanzar(data.length);
                 });
 
                 //Chequea que se haya descargado correctamente
