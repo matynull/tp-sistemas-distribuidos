@@ -88,7 +88,7 @@ function conexionEntrantePar(socket) {
     socket.on('error', () => {
         console.log('Hubo un error al enviar el archivo al par ' + socket.remoteAddress);
         indiceTransferencia = subidas.findIndex(e => e.hash == peticion.hash);
-        if (indice != -1)
+        if (indiceTransferencia != -1)
             subidas.splice(indiceTransferencia, 1);
     });
 
@@ -184,15 +184,17 @@ function mostrarEstado(a) {
                 size = (Math.round(e.filesize / 104857.6) / 10) + " MB";
             else
                 size = (Math.round(e.filesize / 107374182.4) / 10) + " GB";
+            /*
             if (e.velocidad < 1000000)
                 velocidad = (Math.round(e.velocidad / 100) / 10) + " Kbps";
             else
                 velocidad = (Math.round(e.velocidad / 1000) / 10) + " Mbps";
+            */
             tabla.push({
                 "Archivo": e.filename,
                 "Tamaño": size,
                 "Descargado": e.porcentaje + "%",
-                "Velocidad": velocidad,
+                //"Velocidad": velocidad,
                 "Par": e.parIP
             });
         });
@@ -376,7 +378,6 @@ async function actualizarTransferencias() {
     let t = 250;
     while (true) {
         descargas.forEach(e => {
-            console.log(e.terminada);
             if (!e.terminada)
                 e.actualizar(t);
         });
