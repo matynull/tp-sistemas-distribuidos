@@ -308,7 +308,6 @@ function count(objetoJSON, info, tokens) {
 
 function join(objetoJSON, info, tokens) {
     if (limiteMenor < objetoJSON.id && objetoJSON.id <= limiteMayor) {
-        console.log(ipAnt);
         if (solo) {
             solo = false;
             ipSig = objetoJSON.trackerIP;
@@ -340,15 +339,15 @@ function join(objetoJSON, info, tokens) {
         };
         ipAnt = objetoJSON.trackerIP;
         puertoAnt = objetoJSON.trackerPort;
-        console.log("id ANT: " + idAnt);
         idAnt = objetoJSON.id;
+        console.log('ENVIO DEL JOINREQUEST DESDE EL NODO: ' + idTracker + 'A ANTERIOR IP:' + ipAnt + ' PORT:' + puertoAnt);
         socket.send(JSON.stringify(msg), puertoAnt, ipAnt, (err) => {
             if (err)
                 console.log("Hubo un error al enviar joinResponse.");
         });
         console.log("Se aceptó la solicitud de unirse del Tracker " + idAnt);
     } else {
-        console.log("puerto sig " + puertoSig + " ip sig" + ipSig);
+        console.log('ENVIO DEL JOIN DESDE EL NODO: ' + idTracker + 'A SIGUIENTE IP:' + ipSig + ' PORT:' + puertoSig);
         socket.send(JSON.stringify(objetoJSON), puertoSig, ipSig, (err) => {
             if (err)
                 console.log("Hubo un error al reenviar Join al siguiente tracker.");
@@ -369,6 +368,7 @@ function joinResponse(objetoJSON, info, tokens) {
         id: idTracker,
         port: puertoTracker
     };
+    console.log('ENVIO DEL JOINRESPONSE DESDE EL NODO: ' + idTracker + 'A ANTERIOR IP:' + ipAnt + ' PORT:' + puertoAnt);
     socket.send(JSON.stringify(msg), puertoAnt, ipAnt, (err) => {
         if (err)
             console.log("Hubo un error al enviar el primer reqUpdate.");
@@ -388,7 +388,7 @@ function update(objetoJSON, info, tokens) {
     ipAnt = info.address;
     puertoAnt = objetoJSON.antPort;
     dhtAnt = objetoJSON.dht;
-    console.log("Se actualizo la DHT.");
+    console.log("UPDATE");
 };
 
 function reqUpdate(objetoJSON, info, tokens) {
@@ -406,6 +406,7 @@ function reqUpdate(objetoJSON, info, tokens) {
         antPort: puertoTracker,
         dht: dhtTracker
     };
+    console.log('ENVIO DEL REQUPDATE DESDE EL NODO: ' + idTracker + 'A SIGUIENTE IP:' + ipSig + ' PORT:' + puertoSig);
     socket.send(JSON.stringify(msg), puertoSig, ipSig, (err) => {
         if (err)
             console.log("Hubo un error al enviar Update.");
