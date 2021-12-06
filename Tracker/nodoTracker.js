@@ -353,10 +353,6 @@ function join(objetoJSON, info, tokens) {
             ipAnt = objetoJSON.trackerIP;
             puertoAnt = objetoJSON.trackerPort;
         }
-        if (idAnt >= idTracker)
-            limiteMenor = -1;
-        else
-            limiteMenor = idAnt;
         let msg = {
             route: '/joinResponse',
             id: objetoJSON.id,
@@ -369,6 +365,12 @@ function join(objetoJSON, info, tokens) {
         ipAnt = objetoJSON.trackerIP;
         puertoAnt = objetoJSON.trackerPort;
         idAnt = objetoJSON.id;
+
+        if (idAnt >= idTracker)
+            limiteMenor = -1;
+        else
+            limiteMenor = idAnt;
+
         socket.send(JSON.stringify(msg), puertoAnt, ipAnt, (err) => {
             if (err)
                 console.log("Hubo un error al enviar joinResponse.");
@@ -390,6 +392,12 @@ function joinResponse(objetoJSON, info, tokens) {
     idAnt = objetoJSON.antId;
     ipAnt = objetoJSON.antIP;
     puertoAnt = objetoJSON.antPort;
+
+    if (idSig <= idTracker)
+        limiteMayor = 255;
+    else
+        limiteMayor = idTracker;
+
     let msg = {
         route: '/reqUpdate',
         id: idTracker,
@@ -406,22 +414,28 @@ function joinResponse(objetoJSON, info, tokens) {
 };
 
 function update(objetoJSON, info, tokens) {
+    console.log("llegó update");
     idAnt = objetoJSON.id;
+
     if (idAnt >= idTracker)
         limiteMenor = -1;
     else
         limiteMenor = idAnt;
+
     ipAnt = info.address;
     puertoAnt = objetoJSON.antPort;
     dhtAnt = objetoJSON.dht;
 };
 
 function reqUpdate(objetoJSON, info, tokens) {
+    console.log("llego requpdate");
     idSig = objetoJSON.id;
+
     if (idSig <= idTracker)
         limiteMayor = 255;
     else
         limiteMayor = idTracker;
+        
     ipSig = info.address;
     puertoSig = objetoJSON.port;
     let msg = {
@@ -461,7 +475,7 @@ socket.on('message', function (msg, info) {
     switch (tokens[1]) {
         case 'file': //Search, Store, addPar
             let id = parseInt(tokens[2].substring(0, 2), 16);
-            if (id <= limiteMayor && id > limiteMenor) { //Este tracker debe manejar la petición
+            if (limiteMenor < id && id <= limiteMayor) { //Este tracker debe manejar la petición
                 if (tokens.length > 3) { //Store o addPar
                     switch (tokens[3]) {
                         case 'store':
