@@ -170,12 +170,16 @@ let puertoTracker;
 let idAnt, ipAnt, puertoAnt, idSig, ipSig, puertoSig;
 let limiteMenor, limiteMayor;
 
-//Lee el archivo de configuración e inicializa el Tracker
-function configurar() {
+//Lee el archivo de configuración
+function leerCfg() {
     const config = JSON.parse(fs.readFileSync('./tracker.cfg'));
     ipServer = config.ipServer;
     puertoServer = config.puertoServer;
     puertoTracker = config.puertoTracker;
+};
+
+//Inicializa el tracker
+function configurar() {
     let msg = {
         route: '/join',
         id: '',
@@ -471,11 +475,13 @@ socket.on('message', function (msg, info) {
     }
 });
 
-configurar();
+leerCfg();
 
 socket.bind({
-    port: 27015,
+    port: puertoTracker,
     exclusive: true
 });
+
+configurar();
 
 console.log("Escuchando en el puerto 27015.");
