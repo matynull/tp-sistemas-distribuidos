@@ -22,7 +22,7 @@ const transferencia = function (hash, filename, filesize, parIP) {
         this.avanceAcum += avance;
     };
 
-    this.actualizar = function(tiempo) {
+    this.actualizar = function (tiempo) {
         this.porcentaje = Math.round(1000 * (this.descargado / this.filesize)) / 10; //Redondeado a 1 decimal
         this.velocidad = 8000 * this.avanceAcum / tiempo; //En bit/s
         this.avanceAcum = 0;
@@ -70,12 +70,11 @@ function conexionEntrantePar(socket) {
 
             stream.on('readable', () => {
                 let chunk;
-                while (chunk = stream.read()) {     
-                    socket.write(chunk,() => {
-                        indiceTransferencia = subidas.findIndex(e => e.hash == peticion.hash);
-                        subidas[indiceTransferencia].avanzar(chunk.length);
-                    });
-                } 
+                while (chunk = stream.read()) {
+                    socket.write(chunk);
+                    indiceTransferencia = subidas.findIndex(e => e.hash == peticion.hash);
+                    subidas[indiceTransferencia].avanzar(chunk.length);
+                }
             });
 
             stream.on('end', () => {
@@ -396,6 +395,6 @@ actualizarTransferencias();
 
 socketTrackers.bind(27018);
 
-serverPares.listen(puertoPares,'0.0.0.0', () => {
+serverPares.listen(puertoPares, '0.0.0.0', () => {
     console.log('Escuchando conexiones entrantes en el puerto ' + puertoPares + '.');
 });
