@@ -322,6 +322,8 @@ function join(objetoJSON, info, tokens) {
             solo = true;
             idTracker = objetoJSON.id;
             idAnt = objetoJSON.id;
+            ipAnt = objetoJSON.trackerIP;
+            puertoAnt = objetoJSON.trackerPort;
         }
         if (idAnt >= idTracker)
             limiteMenor = -1;
