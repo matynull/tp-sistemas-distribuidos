@@ -327,8 +327,6 @@ function join(objetoJSON, info, tokens) {
             limiteMenor = -1;
         else
             limiteMenor = idAnt;
-        ipAnt = objetoJSON.trackerIP;
-        puertoAnt = objetoJSON.trackerPort;
         let msg = {
             route: '/joinResponse',
             id: objetoJSON.id,
@@ -338,7 +336,9 @@ function join(objetoJSON, info, tokens) {
             antIP: ipAnt,
             antPort: puertoAnt
         };
-        console.log("id ANT: "+idAnt);
+        ipAnt = objetoJSON.trackerIP;
+        puertoAnt = objetoJSON.trackerPort;
+        console.log("id ANT: " + idAnt);
         idAnt = objetoJSON.id;
         socket.send(JSON.stringify(msg), puertoAnt, ipAnt, (err) => {
             if (err)
