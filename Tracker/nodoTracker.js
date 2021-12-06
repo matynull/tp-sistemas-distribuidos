@@ -5,6 +5,7 @@ const udp = require('dgram');
 const fs = require('fs');
 const readline = require('readline');
 
+//Funciones útiles
 const io = readline.createInterface({
     input: process.stdin,
     output: process.stdout
@@ -29,23 +30,44 @@ async function leerConsola() {
             console.log("Limite menor: " + limiteMenor);
             console.log("Limite mayor: " + limiteMayor);
             console.log("******");
+        } else if (rta.toLowerCase() === 'leave') {
+            enviarLeave();
         }
-    }
+    };
 };
+
+function delay(delay) {
+    return new Promise(resolve => {
+        setTimeout(() => { resolve(); }, delay);
+    });
+}
 
 //Definición de tipos
 //Tabla de hash distribuida
 const dht = function () {
     this.elementos = [];
 
-    this.agregar = function (hash, filename, filesize, ip, port) {
+    //Agrega todos los elementos de una DHT recibida por o Leave
+    this.agregarDHT = function (dhtAnterior) {
+        dhtUpdate.elementos.forEach(e => {
+            this.elementos.push(e);
+        });
+        this.elementos.sort(function (a, b) {
+            if (a.id < b.id)
+                return -1;
+            else
+                return 1;
+        });
+    };
+
+    this.agregar = function (hash, filename, filesize) {
         let retorno;
         let id = parseInt(hash.substring(0, 2), 16);
         let indice = this.elementos.findIndex(e => e.id == id);
         if (indice == -1) {
             indice = this.elementos.length;
             this.elementos.push(new elementoHash(hash));
-            retorno = this.elementos[indice].agregarArchivo(hash, filename, filesize, ip, port);
+            retorno = this.elementos[indice].agregarArchivo(hash, filename, filesize);
             this.elementos.sort(function (a, b) {
                 if (a.id < b.id)
                     return -1;
@@ -53,7 +75,7 @@ const dht = function () {
                     return 1;
             });
         } else
-            retorno = this.elementos[indice].agregarArchivo(hash, filename, filesize, ip, port);
+            retorno = this.elementos[indice].agregarArchivo(hash, filename, filesize);
         return retorno;
     };
 
@@ -136,12 +158,12 @@ const elementoHash = function (hash) {
     this.id = parseInt(hash.substring(0, 2), 16);
     this.archivos = [];
 
-    this.agregarArchivo = function (hash, filename, filesize, ip, port) {
+    this.agregarArchivo = function (hash, filename, filesize) {
         let cant = this.archivos.length;
         //Devuelve verdadero si realmente se agregó el archivo
         let indice = this.archivos.findIndex(e => e.hash = hash);
         if (indice == -1)
-            if (cant != this.archivos.push(new archivo(hash, filename, filesize, ip, port)))
+            if (cant != this.archivos.push(new archivo(hash, filename, filesize)))
                 return true;
             else
                 return false;
@@ -151,7 +173,7 @@ const elementoHash = function (hash) {
 };
 
 //Archivo con su lista de pares
-const archivo = function (hash, filename, filesize, ip, port) {
+const archivo = function (hash, filename, filesize) {
     this.hash = hash;
     this.filename = filename;
     this.filesize = filesize;
@@ -198,7 +220,8 @@ let idTracker;
 let puertoTracker;
 let idAnt, ipAnt, puertoAnt, idSig, ipSig, puertoSig;
 let limiteMenor, limiteMayor;
-let solo = false;
+let solo = true, banderaJoin = false;
+let timerHeartbeat;
 
 //Lee el archivo de configuración
 function leerCfg() {
@@ -232,10 +255,12 @@ function store(objetoJSON, info, tokens) {
         route: '/file/' + tokens[2] + '/store',
         status: false
     }
-    objetoJSONConfirmacion.status = dhtTracker.agregar(objetoJSON.body.id, objetoJSON.body.filename, objetoJSON.body.filesize, objetoJSON.body.parIP, objetoJSON.body.parPort);
+    objetoJSONConfirmacion.status = dhtTracker.agregar(objetoJSON.body.id, objetoJSON.body.filename, objetoJSON.body.filesize);
     //Mensaje de confirmación
-    if (objetoJSONConfirmacion.status)
+    if (objetoJSONConfirmacion.status) {
         console.log("Se guardó un archivo con hash " + objetoJSON.body.id + '.');
+        enviarUpdate();
+    }
     else
         console.log("Ya existía un archivo con hash " + objetoJSON.body.id + '.');
     socket.send(JSON.stringify(objetoJSONConfirmacion), objetoJSON.originPort, objetoJSON.originIP, (err) => {
@@ -254,8 +279,10 @@ function addPar(objetoJSON, info, tokens) {
         objetoJSON.parIP = info.address;
     objetoJSONConfirmacion.status = dhtTracker.agregarPar(objetoJSON.id, objetoJSON.parIP, objetoJSON.parPort);
     //Mensaje de confirmación
-    if (objetoJSONConfirmacion.status)
+    if (objetoJSONConfirmacion.status) {
         console.log("Se agregó un par al archivo con hash " + objetoJSON.id + '.');
+        enviarUpdate();
+    }
     else
         console.log("Hubo un error al agregar un par al archivo con hash " + objetoJSON.id + '.');
     socket.send(JSON.stringify(objetoJSONConfirmacion), 27018, objetoJSON.parIP, (err) => {
@@ -337,7 +364,8 @@ function count(msg, objetoJSON, info, tokens) {
 
 function join(objetoJSON, info, tokens) {
     if (limiteMenor < objetoJSON.id && objetoJSON.id <= limiteMayor) {
-        if (solo) {
+        if (banderaJoin) {
+            banderaJoin = false;
             solo = false;
             ipSig = objetoJSON.trackerIP;
             puertoSig = objetoJSON.trackerPort;
@@ -347,6 +375,7 @@ function join(objetoJSON, info, tokens) {
                 limiteMenor = objetoJSON.id;
         }
         if (ipAnt === '0.0.0.0') {
+            banderaJoin = true;
             solo = true;
             idTracker = objetoJSON.id;
             idAnt = objetoJSON.id;
@@ -374,6 +403,7 @@ function join(objetoJSON, info, tokens) {
         socket.send(JSON.stringify(msg), puertoAnt, ipAnt, (err) => {
             if (err)
                 console.log("Hubo un error al enviar joinResponse.");
+            timerHeartbeat = 5000;
         });
         console.log("Se aceptó la solicitud de unirse del Tracker " + idAnt);
     } else {
@@ -398,6 +428,9 @@ function joinResponse(objetoJSON, info, tokens) {
     else
         limiteMayor = idTracker;
 
+    if (idTracker != idSig)
+        solo = false;
+
     let msg = {
         route: '/reqUpdate',
         id: idTracker,
@@ -412,6 +445,19 @@ function joinResponse(objetoJSON, info, tokens) {
     console.log("Tracker anterior: " + idAnt);
     console.log("Tracker siguiente: " + idSig);
 };
+
+function enviarUpdate() {
+    let msg = {
+        route: '/update',
+        id: idTracker,
+        antPort: puertoTracker,
+        dht: dhtTracker
+    };
+    socket.send(JSON.stringify(msg), puertoSig, ipSig, (err) => {
+        if (err)
+            console.log("Hubo un error al enviar Update.");
+    });
+}
 
 function update(objetoJSON, info, tokens) {
     idAnt = objetoJSON.id;
@@ -436,28 +482,123 @@ function reqUpdate(objetoJSON, info, tokens) {
 
     ipSig = info.address;
     puertoSig = objetoJSON.port;
+    enviarUpdate();
+};
+
+function enviarLeave() {
+    console.log("Abandonando la red...")
     let msg = {
-        route: '/update',
-        id: idTracker,
-        antPort: puertoTracker,
-        dht: dhtTracker
+        route: '/leave',
+        dht: dhtTracker,
+        antId: idAnt,
+        antIP: ipAnt,
+        antPort: puertoAnt
     };
     socket.send(JSON.stringify(msg), puertoSig, ipSig, (err) => {
         if (err)
-            console.log("Hubo un error al enviar Update.");
+            console.log("Hubo un error al enviar el mensaje Leave.");
+        else
+            process.exit();
     });
 };
 
 function leave(objetoJSON, info, tokens) {
+    console.log("El Tracker anterior abandonó la red. Adoptando...");
+    //Agrega los archivos "abandonados" al DHT
+    dhtTracker.agregarDHT(objetoJSON.dht);
+    //Actualiza nodo anterior
+    idAnt = objetoJSON.antId;
+    ipAnt = objetoJSON.antIP;
+    puertoAnt = objetoJSON.antPort;
+    if (idTracker == idSig) {
+        solo = true;
+        idSig = idAnt;
+        ipSig = ipAnt;
+        puertoSig = puertoAnt;
+        dhtAnt = dht;
+    } else {
+        //Envía una solicitud de update al nuevo anterior
+        let msg = {
+            route: '/reqUpdate',
+            id: idTracker,
+            port: puertoTracker
+        };
+        socket.send(JSON.stringify(msg), puertoAnt, ipAnt, (err) => {
+            if (err)
+                console.log("Hubo un error al enviar el mensaje reqUpdate.");
+        });
+    }
+};
 
+async function enviarHeartbeat() {
+    let msg = { route: '/heartbeat' };
+    while (true) {
+        if (!solo)
+            socket.send(JSON.stringify(msg), puertoSig, ipSig, (err) => {
+                if (err) {
+                    console.log("No se pudo enviar Heartbeat. Cerrando Tracker.");
+                    process.exit();
+                };
+            });
+        await delay(4000);
+    };
+};
+
+async function esperarHeartbeat() {
+    timerHeartbeat = 5000;
+    while (true) {
+        await delay(300);
+        if (!solo)
+            timerHeartbeat -= 300;
+        if (timerHeartbeat <= 0 && !solo) {
+            console.log("No se escuchó del Tracker anterior en 5 segundos. Adoptando...");
+            dhtTracker.agregarDHT(dhtAnt);
+            if (idSig == idAnt) {
+                solo = true;
+                idAnt = idTracker;
+                ipAnt = '0.0.0.0';
+                puertoAnt = puertoTracker;
+                idSig = idAnt;
+                ipSig = ipAnt;
+                puertoSig = puertoAnt;
+                dhtAnt = dht;
+            } else {
+                enviarUpdate();
+                enviarMissing();
+            }
+        }
+    };
 };
 
 function heartbeat(objetoJSON, info, tokens) {
-
+    timerHeartbeat = 5000;
 };
 
-function missing(objetoJSON, info, tokens) {
+function enviarMissing() {
+    let msg = {
+        route: '/missing',
+        id: idAnt,
+        ip: '0.0.0.0',
+        port: puertoTracker
+    }
+    socket.send(JSON.stringify(msg), puertoSig, ipSig, (err) => {
+        if (err)
+            console.log("Hubo un error al enviar el mensaje Missing.");
+    });
+}
 
+function missing(objetoJSON, info, tokens) {
+    if (objetoJSON.ip === '0.0.0.0')
+        objetoJSON.ip = info.address;
+    if (objetoJSON.id == idSig) {
+        ipSig = objetoJSON.ip;
+        puertoSig = objetoJSON.port;
+        enviarUpdate();
+    } else
+        socket.send(JSON.stringify(objetoJSON), puertoSig, ipSig, (err) => {
+            if (err)
+                console.log("Hubo un error al reenviar el mensaje Missing.");
+        });
 };
 
 //Manejo de mensajes entrantes
@@ -543,3 +684,7 @@ console.log("Escuchando en el puerto 27015.");
 configurar();
 
 leerConsola();
+
+enviarHeartbeat();
+
+esperarHeartbeat();
