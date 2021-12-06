@@ -414,7 +414,6 @@ function joinResponse(objetoJSON, info, tokens) {
 };
 
 function update(objetoJSON, info, tokens) {
-    console.log("llegó update");
     idAnt = objetoJSON.id;
 
     if (idAnt >= idTracker)
@@ -428,14 +427,13 @@ function update(objetoJSON, info, tokens) {
 };
 
 function reqUpdate(objetoJSON, info, tokens) {
-    console.log("llego requpdate");
     idSig = objetoJSON.id;
 
     if (idSig <= idTracker)
         limiteMayor = 255;
     else
         limiteMayor = idTracker;
-        
+
     ipSig = info.address;
     puertoSig = objetoJSON.port;
     let msg = {
