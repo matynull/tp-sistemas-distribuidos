@@ -86,7 +86,7 @@ function conexionEntrantePar(socket) {
     });
 
     socket.on('error', () => {
-        console.log('Hubo un error al enviar el archivo ' + filename + ' al par ' + socket.remoteAddress);
+        console.log('Hubo un error al enviar el archivo al par ' + socket.remoteAddress);
         indiceTransferencia = subidas.findIndex(e => e.hash == peticion.hash);
         if (indice != -1)
             subidas.splice(indiceTransferencia, 1);
@@ -376,6 +376,7 @@ async function actualizarTransferencias() {
     let t = 250;
     while (true) {
         descargas.forEach(e => {
+            console.log(e.terminada);
             if (!e.terminada)
                 e.actualizar(t);
         });
