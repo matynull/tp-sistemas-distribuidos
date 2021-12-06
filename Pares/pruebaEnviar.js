@@ -9,16 +9,21 @@ const transferencia = function (hash, filename, filesize, parIP) {
     this.filesize = filesize;
     this.parIP = parIP;
     this.descargado = 0;
+    this.avanceAcum = 0;
     this.inicio = Date.now();
     this.velocidad = 0;
     this.porcentaje = 0;
-    this.actualizar = function (avance) {
-        let ahora = Date.now();
+    this.avanzar = function (avance) {
         this.descargado += avance;
-        this.porcentaje = Math.round(1000 * (this.descargado / this.filesize)) / 10; //Redondeado a 1 decimal
-        this.velocidad = 8000 * avance / (ahora - this.inicio); //En bit/s, redondeado a 1 decimal
-        this.inicio = ahora;
+        this.avanceAcum += avance;
     };
+
+    this.actualizar = function(tiempo) {
+        this.porcentaje = Math.round(1000 * (this.descargado / this.filesize)) / 10; //Redondeado a 1 decimal
+        this.velocidad = 8000 * this.avanceAcum / tiempo; //En bit/s
+        this.avanceAcum = 0;
+    };
+
     this.terminar = function () {
         this.descargado = this.filesize;
         this.porcentaje = 100;
@@ -57,7 +62,7 @@ function conexionEntrantePar(socket) {
                 let chunk;
                 while (chunk = stream.read()) {
                     indiceTransferencia = subidas.findIndex(e => e.hash == peticion.hash);
-                    subidas[indiceTransferencia].actualizar(chunk.length);
+                    subidas[indiceTransferencia].avanzar(chunk.length);
                     socket.write(chunk);
                 } 
             });
@@ -120,9 +125,9 @@ function mostrarEstado(a) {
             else
                 size = (Math.round(e.filesize / 107374182.4) / 10) + " GB";
             if (e.velocidad < 1000000)
-                velocidad = (Math.round(e.filesize / 100) / 10) + " Kbps";
+                velocidad = (Math.round(e.velocidad / 100) / 10) + " Kbps";
             else
-                velocidad = (Math.round(e.filesize / 1000) / 10) + " Mbps";
+                velocidad = (Math.round(e.velocidad / 1000) / 10) + " Mbps";
             tabla.push({
                 "Archivo": e.filename,
                 "Tamaño": size,

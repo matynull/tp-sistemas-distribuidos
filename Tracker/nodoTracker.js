@@ -61,14 +61,14 @@ const dht = function () {
                 return 1;
     }
 
-    this.bodyFound= function(hash){
+    this.bodyFound = function(hash){
         let retorno = {};
         let id = parseInt(hash.substring(0, 2), 16);
         let indice = this.elementos.findIndex(e => e.id == id);
         if (indice != -1){
             let indiceArch = this.elementos[indice].archivos.findIndex(e => e.hash == hash);
             if ( indiceArch != -1)
-                retorno = this.elementos[indice].archivos[indiceArch].bodyFound;
+                retorno = this.elementos[indice].archivos[indiceArch].bodyFound();
         }
         return retorno;
     }
@@ -252,6 +252,7 @@ socket.on('message', function (msg, info) {
                     if (dhtPropia.buscar(tokens[2]) == 1) {
                         console.log("Se encontró un archivo con hash " + tokens[2] + '.');
                         objetoJSONFound.body = dhtPropia.bodyFound(tokens[2]);
+                        objetoJSONFound.body.trackerPort = socket.address().port;
                     } else
                         console.log("No se encontró ningún archivo con hash " + tokens[2] + '.');
                     socket.send(JSON.stringify(objetoJSONFound), objetoJSON.originPort, objetoJSON.originIP, (err) => {

@@ -3,22 +3,30 @@ const fs = require('fs');
 const crypto = require('crypto');
 const readline = require('readline');
 
+let antes;
+let despues;
+
 const transferencia = function (hash, filename, filesize, parIP) {
     this.hash = hash;
     this.filename = filename;
     this.filesize = filesize;
     this.parIP = parIP;
     this.descargado = 0;
+    this.avanceAcum = 0;
     this.inicio = Date.now();
     this.velocidad = 0;
     this.porcentaje = 0;
-    this.actualizar = function (avance) {
-        let ahora = Date.now();
+    this.avanzar = function (avance) {
         this.descargado += avance;
-        this.porcentaje = Math.round(1000 * (this.descargado / this.filesize)) / 10; //Redondeado a 1 decimal
-        this.velocidad = 8000 * avance / (ahora - this.inicio); //En bit/s, redondeado a 1 decimal
-        this.inicio = ahora;
+        this.avanceAcum += avance;
     };
+
+    this.actualizar = function(tiempo) {
+        this.porcentaje = Math.round(1000 * (this.descargado / this.filesize)) / 10; //Redondeado a 1 decimal
+        this.velocidad = 8000 * this.avanceAcum / tiempo; //En bit/s
+        this.avanceAcum = 0;
+    };
+
     this.terminar = function () {
         this.descargado = this.filesize;
         this.porcentaje = 100;
@@ -64,6 +72,7 @@ async function descargar(info) {
             }
             else {
                 descargando = true;
+                antes = Date.now();
                 //Elige un par de la lista al azar para distribuir carga
                 r = Math.trunc(Math.random() * pares.length);
 
@@ -76,20 +85,20 @@ async function descargar(info) {
                         hash: info.body.id
                     }));
                     //Crea el archivo
-                    writeStream = fs.createWriteStream('./Archivos/' + filename);
+                    writeStream = fs.createWriteStream('./Archivos/' + filename + '2');
                 });
 
                 //Transfiere los datos recibidos al archivo creado
                 socketPares.on('data', (data) => {
                     writeStream.write(data);
                     indice = descargas.findIndex(e => e.hash == hash);
-                    descargas[indice].actualizar(data.length);
+                    descargas[indice].avanzar(data.length);
                 });
 
                 //Chequea que se haya descargado correctamente
                 socketPares.on('end', () => {
                     encriptado = crypto.createHash('sha1');
-                    const hash = encriptado.update(filename + fs.statSync('./Archivos/' + filename).size).digest('hex');
+                    const hash = encriptado.update(filename + fs.statSync('./Archivos/' + filename + '2').size).digest('hex');
                     if (hash === info.body.id) {//Se descargó el archivo correctamente
                         console.log('Se terminó de descargar el archivo ' + filename);
                         archivos.push({ dir: './Archivos/' + filename, hash: hash });
@@ -110,7 +119,7 @@ async function descargar(info) {
                 function errorDescarga() {
                     console.log('Hubo un error al descargar el archivo ' + filename + ' del par ' + pares[r].parIP);
                     try {
-                        fs.unlinkSync('./Archivos/' + filename);
+                        fs.unlinkSync('./Archivos/' + filename + '2');
                     } catch (e) {
                     };
                     indice = descargas.findIndex(e => e.hash == hash);
@@ -161,9 +170,9 @@ function mostrarEstado(a) {
             else
                 size = (Math.round(e.filesize / 107374182.4) / 10) + " GB";
             if (e.velocidad < 1000000)
-                velocidad = (Math.round(e.filesize / 100) / 10) + " Kbps";
+                velocidad = (Math.round(e.velocidad / 100) / 10) + " Kbps";
             else
-                velocidad = (Math.round(e.filesize / 1000) / 10) + " Mbps";
+                velocidad = (Math.round(e.velocidad / 1000) / 10) + " Mbps";
             tabla.push({
                 "Archivo": e.filename,
                 "Tamaño": size,
@@ -189,6 +198,20 @@ let info = {
     }
 };
 
+async function actualizarTransferencias() {
+    let t = 500;
+    while (true) {
+        descargas.forEach(e => {
+            if (!e.terminada)
+                e.actualizar(t);
+        });
+        mostrarEstado(descargas);
+        await delay(t);
+    }
+}
+
 descargar(info);
 
 leerConsola();
+
+actualizarTransferencias();

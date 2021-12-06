@@ -9,21 +9,28 @@ const transferencia = function (hash, filename, filesize, parIP) {
     this.filename = filename;
     this.filesize = filesize;
     this.parIP = parIP;
+    this.terminada = false;
     this.descargado = 0;
-    this.inicio = Date.now();
+    this.avanceAcum = 0;
     this.velocidad = 0;
     this.porcentaje = 0;
-    this.actualizar = function (avance) {
-        let ahora = Date.now();
+
+    this.avanzar = function (avance) {
         this.descargado += avance;
-        this.porcentaje = Math.round(1000 * (this.descargado / this.filesize)) / 10; //Redondeado a 1 decimal
-        this.velocidad = 8000 * avance / (ahora - this.inicio); //En bit/s, redondeado a 1 decimal
-        this.inicio = ahora;
+        this.avanceAcum += avance;
     };
+
+    this.actualizar = function(tiempo) {
+        this.porcentaje = Math.round(1000 * (this.descargado / this.filesize)) / 10; //Redondeado a 1 decimal
+        this.velocidad = 8000 * this.avanceAcum / tiempo; //En bit/s
+        this.avanceAcum = 0;
+    };
+
     this.terminar = function () {
         this.descargado = this.filesize;
         this.porcentaje = 100;
         this.velocidad = 0;
+        this.terminada = true;
     };
 }
 
@@ -61,10 +68,11 @@ function conexionEntrantePar(socket) {
 
             stream.on('readable', () => {
                 let chunk;
-                while (chunk = stream.read()) {
-                    indiceTransferencia = subidas.findIndex(e => e.hash == peticion.hash);
-                    subidas[indiceTransferencia].actualizar(chunk.length);
-                    socket.write(chunk);
+                while (chunk = stream.read()) {     
+                    socket.write(chunk,() => {
+                        indiceTransferencia = subidas.findIndex(e => e.hash == peticion.hash);
+                        subidas[indiceTransferencia].avanzar(chunk.length);
+                    });
                 } 
             });
 
@@ -137,18 +145,9 @@ async function leerConsola() {
                         let indice;
                         let indiceArchivos = archivos.findIndex(e => e.hash == info.hash);
                         await search(info.hash, info.trackerIP, info.trackerPort);
-
-                        console.log("salió del await search");
-
                         indice = respuestasID.findIndex((e) => e.id == idSave);
-
-                        console.log("entrando al delay de leerConsola");
-
                         while (respuestasID[indice].Response === undefined)
                             await delay(50);
-
-                        console.log("salió del delay de leerConsola");
-
                         let responseSearch = respuestasID[indice].Response;
                         if (responseSearch.body.id !== undefined) {
                             //Se encontró el archivo en el Tracker
@@ -210,7 +209,6 @@ async function descargar(info) {
     let filename = info.body.filename;
     let hash = info.body.id;
     let indice;
-    console.log(info);
     while (!termino) {
         while (descargando)
             await delay(500);
@@ -288,12 +286,8 @@ async function addPar(info) {
     await addParPromise(info.body);
     let indice = respuestasID.findIndex((e) => e.id == idSave);
 
-    console.log('por entrar al while addPar');
-
     while (respuestasID[indice].Response === undefined)
         await delay(50);
-
-    console.log('salió del while addPar');
 
     let responseAddPar = respuestasID[indice].Response;
     //Se recibió la respuesta del addPar
@@ -315,14 +309,12 @@ function addParPromise(info) {
             parPort: 27019,
         }
 
-        console.log("addParPromise " + info.trackerIP);
-
         socketTrackers.send(JSON.stringify(msg), info.trackerPort, info.trackerIP, (err) => {
             if (!err) {
                 respuestasID.push({ id: msgID });
                 msgID += 2;
             } else
-                console.log('error en send de addPar');
+                console.log('Error al enviar addPar.');
             resolve();
         });
     });
@@ -340,7 +332,7 @@ function search(hash, ip, port) {
                 respuestasID.push({ id: msgID });
                 msgID += 2;
             } else
-                console.log('error en send de search');
+                console.log('Error al enviar Search.');
             resolve();
         })
     })
@@ -358,8 +350,6 @@ socketTrackers.on('message', (msg, info) => {
             id: mensajeID,
             Response: objetoJSON
         };
-
-        console.log(objetoJSON);
 
     } else {
         console.log('Llegó un mensaje con ID desconocido.');
@@ -381,12 +371,29 @@ function checkearArchivos() {
     });
 };
 
+async function actualizarTransferencias() {
+    let t = 250;
+    while (true) {
+        descargas.forEach(e => {
+            if (!e.terminada)
+                e.actualizar(t);
+        });
+        subidas.forEach(e => {
+            if (!e.terminada)
+                e.actualizar(t);
+        });
+        await delay(t);
+    }
+};
+
 checkearArchivos();
 
 leerConsola();
 
+actualizarTransferencias();
+
 socketTrackers.bind(27018);
 
-serverPares.listen(puertoPares, () => {
+serverPares.listen(puertoPares,'0.0.0.0', () => {
     console.log('Escuchando conexiones entrantes en el puerto ' + puertoPares + '.');
 });
