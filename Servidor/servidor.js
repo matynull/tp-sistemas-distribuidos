@@ -135,7 +135,7 @@ function store(formulario) {
                 parPort: formulario.nodePort
             }
         }
-        socket.send(JSON.stringify(objetoStore), portTracker, ipTracker, (err) => {
+        socket.send(JSON.stringify(objetoStore), puertoTracker, ipTracker, (err) => {
             if (!err) {
                 msgPendientes.push({ id: msgID });
                 msgID += 2;
@@ -153,7 +153,7 @@ function scan() {
             route: '/scan',
             originIP: '0.0.0.0',
             originPort: puertoServerTrackers,
-        }), portTracker, ipTracker, function (err) {
+        }), puertoTracker, ipTracker, function (err) {
             if (!err) {
                 msgPendientes.push({ id: msgID });
                 msgID += 2;
@@ -171,7 +171,7 @@ function search(hash) {
             route: '/file/' + hash,
             originIP: '0.0.0.0',
             originPort: puertoServerTrackers
-        }), portTracker, ipTracker, function (err) {
+        }), puertoTracker, ipTracker, function (err) {
             if (!err) {
                 msgPendientes.push({ id: msgID });
                 msgID += 2;

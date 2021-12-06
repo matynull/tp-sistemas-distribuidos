@@ -284,7 +284,7 @@ function search(objetoJSON, info, tokens) {
     });
 };
 
-function scan(objetoJSON, info, tokens) {
+function scan(msg, objetoJSON, info, tokens) {
     if (msgPendientes.findIndex(e => e == objetoJSON.messageId) == -1) {
         let objetoJSONRespuesta = {
             "messageId": objetoJSON.messageId,
@@ -314,7 +314,7 @@ function scan(objetoJSON, info, tokens) {
     }
 };
 
-function count(objetoJSON, info, tokens) {
+function count(msg, objetoJSON, info, tokens) {
     if (msgPendientes.findIndex(e => e == objetoJSON.messageId) == -1) {
         if (objetoJSON.body.trackerCount == 0) { //Este Tracker es el primero de la cola circular. Es el responsable de devolver la respuesta a la petición.
             msgPendientes.push(objetoJSON.messageId);
@@ -499,10 +499,10 @@ socket.on('message', function (msg, info) {
             }
             break;
         case 'scan':
-            scan(objetoJSON, info, tokens);
+            scan(msg, objetoJSON, info, tokens);
             break;
         case 'count':
-            count(objetoJSON, info, tokens);
+            count(msg, objetoJSON, info, tokens);
             break;
         case 'join':
             join(objetoJSON, info, tokens);
