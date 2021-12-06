@@ -3,6 +3,35 @@ const crypto = require('crypto');
 //UDP y FS para leer archivo
 const udp = require('dgram');
 const fs = require('fs');
+const readline = require('readline');
+
+const io = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout
+});
+
+var pregunta = function () {
+    return new Promise((resolve) => {
+        io.question('', respuesta => {
+            resolve(respuesta);
+        })
+    });
+};
+
+async function leerConsola() {
+    let rta;
+    while (true) {
+        rta = await pregunta();
+        if (rta.toLowerCase() === 'status') {//Mostrar estado de todas las descargas
+            console.log("******");
+            console.log("Anterior: ID " + idAnt + " - IP " + ipAnt + ":" + puertoAnt);
+            console.log("Siguiente: ID " + idSig + " - IP " + ipSig + ":" + puertoSig);
+            console.log("Limite menor: " + limiteMenor);
+            console.log("Limite mayor: " + limiteMayor);
+            console.log("******");
+        }
+    }
+};
 
 //Definición de tipos
 //Tabla de hash distribuida
@@ -340,14 +369,12 @@ function join(objetoJSON, info, tokens) {
         ipAnt = objetoJSON.trackerIP;
         puertoAnt = objetoJSON.trackerPort;
         idAnt = objetoJSON.id;
-        console.log('ENVIO DEL JOINREQUEST DESDE EL NODO: ' + idTracker + 'A ANTERIOR IP:' + ipAnt + ' PORT:' + puertoAnt);
         socket.send(JSON.stringify(msg), puertoAnt, ipAnt, (err) => {
             if (err)
                 console.log("Hubo un error al enviar joinResponse.");
         });
         console.log("Se aceptó la solicitud de unirse del Tracker " + idAnt);
     } else {
-        console.log('ENVIO DEL JOIN DESDE EL NODO: ' + idTracker + 'A SIGUIENTE IP:' + ipSig + ' PORT:' + puertoSig);
         socket.send(JSON.stringify(objetoJSON), puertoSig, ipSig, (err) => {
             if (err)
                 console.log("Hubo un error al reenviar Join al siguiente tracker.");
@@ -368,7 +395,6 @@ function joinResponse(objetoJSON, info, tokens) {
         id: idTracker,
         port: puertoTracker
     };
-    console.log('ENVIO DEL JOINRESPONSE DESDE EL NODO: ' + idTracker + 'A ANTERIOR IP:' + ipAnt + ' PORT:' + puertoAnt);
     socket.send(JSON.stringify(msg), puertoAnt, ipAnt, (err) => {
         if (err)
             console.log("Hubo un error al enviar el primer reqUpdate.");
@@ -388,16 +414,14 @@ function update(objetoJSON, info, tokens) {
     ipAnt = info.address;
     puertoAnt = objetoJSON.antPort;
     dhtAnt = objetoJSON.dht;
-    console.log("UPDATE");
 };
 
 function reqUpdate(objetoJSON, info, tokens) {
     idSig = objetoJSON.id;
-    console.log("idSig: " + idSig + " idTracker: " + idTracker);
     if (idSig <= idTracker)
         limiteMayor = 255;
     else
-        limiteMayor = idSig;
+        limiteMayor = idTracker;
     ipSig = info.address;
     puertoSig = objetoJSON.port;
     let msg = {
@@ -406,7 +430,6 @@ function reqUpdate(objetoJSON, info, tokens) {
         antPort: puertoTracker,
         dht: dhtTracker
     };
-    console.log('ENVIO DEL REQUPDATE DESDE EL NODO: ' + idTracker + 'A SIGUIENTE IP:' + ipSig + ' PORT:' + puertoSig);
     socket.send(JSON.stringify(msg), puertoSig, ipSig, (err) => {
         if (err)
             console.log("Hubo un error al enviar Update.");
@@ -507,8 +530,4 @@ socket.bind({
 console.log("Escuchando en el puerto 27015.");
 configurar();
 
-function delay(delay) {
-    return new Promise(resolve => {
-        setTimeout(() => { resolve(); }, delay);
-    });
-}
+leerConsola();
