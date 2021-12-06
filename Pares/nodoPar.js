@@ -45,49 +45,35 @@ let socketPares = new net.Socket();
 let serverPares = net.createServer(conexionEntrantePar);
 
 function conexionEntrantePar(socket) {
-    let datos = '';
+    let peticion;
+
     console.log('Conexion establecida con ' + socket.remoteAddress);
 
-    socket.on('error',(err)=>{console.log("entro al error entrante" + err)});
-
     socket.on('data', (data) => {
-        datos += data;
-    });
-
-    socket.on('end', (data) => {
-
-        console.log('llegó petición');
-
-        let peticion = JSON.parse(datos);
+        peticion = JSON.parse(data);
         let indiceArchivo = archivos.findIndex(e => e.hash == peticion.hash);
         let indiceTransferencia;
         let filename = archivos[indiceArchivo].dir.split("/")[2];
         if (indiceArchivo != -1) {
             //El archivo está disponible para enviar
-
-            console.log('está para enviar');
-
             subidas.push(new transferencia(peticion.hash, filename, fs.statSync(archivos[indiceArchivo].dir).size, socket.remoteAddress));
             let stream = fs.createReadStream(archivos[indiceArchivo].dir);
 
             stream.on('readable', () => {
                 let chunk;
-                while (chunk = this.read())
+                while (chunk = stream.read()) {
+                    indiceTransferencia = subidas.findIndex(e => e.hash == peticion.hash);
+                    subidas[indiceTransferencia].actualizar(chunk.length);
                     socket.write(chunk);
-                indiceTransferencia = subidas.findIndex(e => e.hash == peticion.hash);
-                subidas[indiceTransferencia].actualizar(chunk.length);
+                } 
             });
 
             stream.on('end', () => {
-
-                console.log("terminó de enviar");
-
-                socket.end();
                 indiceTransferencia = subidas.findIndex(e => e.hash == peticion.hash);
                 subidas[indiceTransferencia].terminar();
+                socket.end();
             });
-        } else
-            socket.end();
+        }
     });
 
     socket.on('error', () => {
@@ -199,9 +185,9 @@ function mostrarEstado(a) {
             else
                 size = (Math.round(e.filesize / 107374182.4) / 10) + " GB";
             if (e.velocidad < 1000000)
-                velocidad = (Math.round(e.filesize / 100) / 10) + " Kbps";
+                velocidad = (Math.round(e.velocidad / 100) / 10) + " Kbps";
             else
-                velocidad = (Math.round(e.filesize / 1000) / 10) + " Mbps";
+                velocidad = (Math.round(e.velocidad / 1000) / 10) + " Mbps";
             tabla.push({
                 "Archivo": e.filename,
                 "Tamaño": size,
@@ -215,7 +201,7 @@ function mostrarEstado(a) {
         console.log("No hay transferencias activas.");
 };
 
-function descargar(info) {
+async function descargar(info) {
     let writeStream;
     let termino = false;
     let descargando = false;
@@ -226,16 +212,11 @@ function descargar(info) {
     let indice;
     while (!termino) {
         while (descargando)
-            delay(500);
-
-        //console.log('salió del delay');
+            await delay(500);
 
         if (!termino) {
             if (pares.length == 0) {
                 console.log('El archivo ' + filename + ' no tiene pares disponibles.');
-
-                console.log(info.route);
-
                 termino = true;
             }
             else {
@@ -274,9 +255,9 @@ function descargar(info) {
                         //Se agrega como par al archivo
                         addPar(info);
                         termino = true;
+                        descargando = false;
                     } else
                         errorDescarga();
-                    descargando = false;
                 });
 
                 socketPares.on('error', () => {
@@ -285,7 +266,10 @@ function descargar(info) {
 
                 function errorDescarga() {
                     console.log('Hubo un error al descargar el archivo ' + filename + ' del par ' + pares[r].parIP);
-                    fs.unlinksync('./Archivos/' + filename);
+                    try {
+                        fs.unlinkSync('./Archivos/' + filename);
+                    } catch (e) {
+                    };
                     indice = descargas.findIndex(e => e.hash == hash);
                     if (indice != -1)
                         descargas.splice(indice, 1);

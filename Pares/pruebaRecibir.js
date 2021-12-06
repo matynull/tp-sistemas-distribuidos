@@ -76,7 +76,7 @@ async function descargar(info) {
                         hash: info.body.id
                     }));
                     //Crea el archivo
-                    writeStream = fs.createWriteStream('./Archivos/' + filename + 'Recibido');
+                    writeStream = fs.createWriteStream('./Archivos/' + filename);
                 });
 
                 //Transfiere los datos recibidos al archivo creado
@@ -89,7 +89,7 @@ async function descargar(info) {
                 //Chequea que se haya descargado correctamente
                 socketPares.on('end', () => {
                     encriptado = crypto.createHash('sha1');
-                    const hash = encriptado.update(filename + fs.statSync('./Archivos/' + filename + 'Recibido').size).digest('hex');
+                    const hash = encriptado.update(filename + fs.statSync('./Archivos/' + filename).size).digest('hex');
                     if (hash === info.body.id) {//Se descargó el archivo correctamente
                         console.log('Se terminó de descargar el archivo ' + filename);
                         archivos.push({ dir: './Archivos/' + filename, hash: hash });
@@ -109,7 +109,10 @@ async function descargar(info) {
 
                 function errorDescarga() {
                     console.log('Hubo un error al descargar el archivo ' + filename + ' del par ' + pares[r].parIP);
-                    fs.unlinkSync('./Archivos/' + filename + 'Recibido');
+                    try {
+                        fs.unlinkSync('./Archivos/' + filename);
+                    } catch (e) {
+                    };
                     indice = descargas.findIndex(e => e.hash == hash);
                     if (indice != -1)
                         descargas.splice(indice, 1);
