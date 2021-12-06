@@ -521,9 +521,11 @@ function leave(objetoJSON, info, tokens) {
         idAnt = objetoJSON.antId;
         ipAnt = objetoJSON.antIP;
         puertoAnt = objetoJSON.antPort;
+        limiteMenor = -1;
         idSig = idAnt;
         ipSig = ipAnt;
         puertoSig = puertoAnt;
+        limiteMayor = 255;
         dhtAnt = dht;
     } else {
         //Envía una solicitud de update al nuevo anterior
