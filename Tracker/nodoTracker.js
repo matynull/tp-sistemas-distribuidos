@@ -307,9 +307,11 @@ function count(objetoJSON, info, tokens) {
 
 function join(objetoJSON, info, tokens) {
     if (limiteMenor < objetoJSON.id && objetoJSON.id <= limiteMayor) {
-        if (ipAnt === '0.0.0.0') 
+        console.log("entro lim may: "+ limiteMayor +" lim men: "+ limiteMenor);
+        if (ipAnt === '0.0.0.0'){ 
             idTracker = objetoJSON.id;
-        idAnt = objetoJSON.id;      
+            idAnt = objetoJSON.id;
+        }  
         if (idAnt >= idTracker)
             limiteMenor = -1;
         else
@@ -325,6 +327,7 @@ function join(objetoJSON, info, tokens) {
             antIP: ipAnt,
             antPort: puertoAnt
         };
+        idAnt = objetoJSON.id;
         socket.send(JSON.stringify(msg), puertoAnt, ipAnt, (err) => {
             if (err)
                 console.log("Hubo un error al enviar joinResponse.");
@@ -361,8 +364,6 @@ function joinResponse(objetoJSON, info, tokens) {
 };
 
 function update(objetoJSON, info, tokens) {
-    console.log(dht);
-
     idAnt = objetoJSON.id;
     if (idAnt >= idTracker)
         limiteMenor = -1;
@@ -372,12 +373,11 @@ function update(objetoJSON, info, tokens) {
     puertoAnt = objetoJSON.antPort;
     dhtAnt = objetoJSON.dht;
     console.log("Se actualizo la DHT.");
-
-    console.log(dht);
 };
 
 function reqUpdate(objetoJSON, info, tokens) {
     idSig = objetoJSON.id;
+    console.log("idSig: " + idSig + "idTracker: "+ idTracker);
     if (idSig <= idTracker)
         limiteMayor = 255;
     else
