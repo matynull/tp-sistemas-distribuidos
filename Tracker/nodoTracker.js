@@ -49,7 +49,7 @@ const dht = function () {
 
     //Agrega todos los elementos de una DHT recibida por o Leave
     this.agregarDHT = function (dhtAnterior) {
-        dhtUpdate.elementos.forEach(e => {
+        dhtAnterior.elementos.forEach(e => {
             this.elementos.push(e);
         });
         this.elementos.sort(function (a, b) {
@@ -222,6 +222,7 @@ let idAnt, ipAnt, puertoAnt, idSig, ipSig, puertoSig;
 let limiteMenor, limiteMayor;
 let solo = true, banderaJoin = false;
 let timerHeartbeat;
+let heartbeatPausa = true;
 
 //Lee el archivo de configuración
 function leerCfg() {
@@ -404,6 +405,7 @@ function join(objetoJSON, info, tokens) {
             if (err)
                 console.log("Hubo un error al enviar joinResponse.");
             timerHeartbeat = 5000;
+            heartbeatPausa = false;
         });
         console.log("Se aceptó la solicitud de unirse del Tracker " + idAnt);
     } else {
@@ -460,6 +462,7 @@ function enviarUpdate() {
 }
 
 function update(objetoJSON, info, tokens) {
+    heartbeatPausa = false;
     idAnt = objetoJSON.id;
 
     if (idAnt >= idTracker)
@@ -548,25 +551,28 @@ async function esperarHeartbeat() {
     timerHeartbeat = 5000;
     while (true) {
         await delay(300);
-        if (!solo)
-            timerHeartbeat -= 300;
-        if (timerHeartbeat <= 0 && !solo) {
-            console.log("No se escuchó del Tracker anterior en 5 segundos. Adoptando...");
-            dhtTracker.agregarDHT(dhtAnt);
-            if (idSig == idAnt) {
-                solo = true;
-                idAnt = idTracker;
-                ipAnt = '0.0.0.0';
-                puertoAnt = puertoTracker;
-                idSig = idAnt;
-                ipSig = ipAnt;
-                puertoSig = puertoAnt;
-                dhtAnt = dht;
-            } else {
-                enviarUpdate();
-                enviarMissing();
-            }
-        }
+        if (!heartbeatPausa) {
+            if (!solo)
+                timerHeartbeat -= 300;
+            if (timerHeartbeat <= 0 && !solo) {
+                console.log("No se escuchó del Tracker anterior en 5 segundos. Adoptando...");
+                heartbeatPausa = true;
+                dhtTracker.agregarDHT(dhtAnt);
+                if (idSig == idAnt) {
+                    solo = true;
+                    idAnt = idTracker;
+                    ipAnt = '0.0.0.0';
+                    puertoAnt = puertoTracker;
+                    idSig = idAnt;
+                    ipSig = ipAnt;
+                    puertoSig = puertoAnt;
+                    dhtAnt = dht;
+                } else {
+                    enviarUpdate();
+                    enviarMissing();
+                };
+            };
+        };
     };
 };
 
