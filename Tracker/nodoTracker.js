@@ -173,7 +173,7 @@ let limiteMenor, limiteMayor;
 
 //Lee el archivo de configuración e inicializa el Tracker
 function configurar() {
-    const config = JSON.parse(fs.readFileSync('./cfg/tracker.cfg'));
+    const config = JSON.parse(fs.readFileSync('./tracker.cfg'));
     ipServer = config.ipServer;
     puertoServer = config.puertoServer;
     puertoTracker = config.puertoTracker;
