@@ -1,5 +1,4 @@
 //SHA1
-const { count } = require('console');
 const crypto = require('crypto');
 //UDP y FS para leer archivo
 const udp = require('dgram');

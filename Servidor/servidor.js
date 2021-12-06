@@ -80,10 +80,15 @@ socket.on('message', function (msg, info) {
         else if (mensaje.route === '/join') {
             mensaje.trackerIP = info.address;
             mensaje.id = parseInt(encriptado.update(mensaje.trackerIP + ':' + mensaje.trackerPort).digest('hex').substring(0, 2), 16);
-            socket.send(JSON.stringify(mensaje),puertoTracker,ipTracker,(err) => {
+            if (ipTracker === '0.0.0.0') {
+                ipTracker = mensaje.trackerIP;
+                puertoTracker = mensaje.trackerPort;
+                idTracker = mensaje.id;  
+            }
+            socket.send(JSON.stringify(mensaje), puertoTracker, ipTracker, (err) => {
                 console.log("Hubo un error al enviar Join al primer Tracker.");
             });
-            if (ipTracker === '0.0.0.0' || mensaje.id < idTracker) {
+            if (mensaje.id < idTracker) {
                 ipTracker = mensaje.trackerIP;
                 puertoTracker = mensaje.trackerPort;
                 idTracker = mensaje.id;
