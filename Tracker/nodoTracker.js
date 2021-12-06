@@ -251,6 +251,7 @@ function configurar() {
 };
 
 function store(objetoJSON, info, tokens) {
+    timerHeartbeat = 5000;
     let objetoJSONConfirmacion = {
         messageId: objetoJSON.messageId,
         route: '/file/' + tokens[2] + '/store',
@@ -313,6 +314,7 @@ function search(objetoJSON, info, tokens) {
 };
 
 function scan(msg, objetoJSON, info, tokens) {
+    timerHeartbeat = 5000;
     if (msgPendientes.findIndex(e => e == objetoJSON.messageId) == -1) {
         let objetoJSONRespuesta = {
             "messageId": objetoJSON.messageId,
@@ -343,6 +345,7 @@ function scan(msg, objetoJSON, info, tokens) {
 };
 
 function count(msg, objetoJSON, info, tokens) {
+    timerHeartbeat = 5000;
     if (msgPendientes.findIndex(e => e == objetoJSON.messageId) == -1) {
         if (objetoJSON.body.trackerCount == 0) { //Este Tracker es el primero de la cola circular. Es el responsable de devolver la respuesta a la petición.
             msgPendientes.push(objetoJSON.messageId);
@@ -462,7 +465,6 @@ function enviarUpdate() {
 }
 
 function update(objetoJSON, info, tokens) {
-    heartbeatPausa = false;
     idAnt = objetoJSON.id;
 
     if (idAnt >= idTracker)
@@ -473,9 +475,12 @@ function update(objetoJSON, info, tokens) {
     ipAnt = info.address;
     puertoAnt = objetoJSON.antPort;
     dhtAnt = objetoJSON.dht;
+    timerHeartbeat = 5000;
+    heartbeatPausa = false;
 };
 
 function reqUpdate(objetoJSON, info, tokens) {
+    timerHeartbeat = 5000;
     idSig = objetoJSON.id;
 
     if (idSig <= idTracker)
@@ -507,6 +512,7 @@ function enviarLeave() {
 
 function leave(objetoJSON, info, tokens) {
     console.log("El Tracker anterior abandonó la red. Adoptando...");
+    heartbeatPausa = true;
     //Agrega los archivos "abandonados" al DHT
     dhtTracker.agregarDHT(objetoJSON.dht);
     //Actualiza nodo anterior
@@ -521,6 +527,9 @@ function leave(objetoJSON, info, tokens) {
         dhtAnt = dht;
     } else {
         //Envía una solicitud de update al nuevo anterior
+        idAnt = objetoJSON.antId;
+        ipAnt = objetoJSON.antIP;
+        puertoAnt = objetoJSON.antPort;
         let msg = {
             route: '/reqUpdate',
             id: idTracker,
