@@ -308,6 +308,7 @@ function count(objetoJSON, info, tokens) {
 
 function join(objetoJSON, info, tokens) {
     if (limiteMenor < objetoJSON.id && objetoJSON.id <= limiteMayor) {
+        console.log(ipAnt);
         if (solo) {
             solo = false;
             ipSig = objetoJSON.trackerIP;
@@ -330,7 +331,7 @@ function join(objetoJSON, info, tokens) {
         puertoAnt = objetoJSON.trackerPort;
         let msg = {
             route: '/joinResponse',
-            id: idAnt,
+            id: objetoJSON.id,
             sigId: idTracker,
             sigPort: puertoTracker,
             antId: idAnt,
@@ -502,8 +503,6 @@ socket.bind({
 
 console.log("Escuchando en el puerto 27015.");
 configurar();
-
-
 
 function delay(delay) {
     return new Promise(resolve => {
