@@ -210,6 +210,7 @@ const archivo = function (hash, filename, filesize) {
 
 let dhtTracker, dhtAnt;
 dhtTracker = new dht();
+dhtAnt = new dht();
 
 let msgPendientes = [];
 
@@ -607,9 +608,10 @@ function heartbeat(objetoJSON, info, tokens) {
 function enviarMissing() {
     let msg = {
         route: '/missing',
-        id: idAnt,
-        ip: '0.0.0.0',
-        port: puertoTracker
+        missingId: idAnt,
+        sigId: idTracker,
+        sigIP: '0.0.0.0',
+        sigPort: puertoTracker
     }
     socket.send(JSON.stringify(msg), puertoSig, ipSig, (err) => {
         if (err)
@@ -620,9 +622,16 @@ function enviarMissing() {
 function missing(objetoJSON, info, tokens) {
     if (objetoJSON.ip === '0.0.0.0')
         objetoJSON.ip = info.address;
-    if (objetoJSON.id == idSig) {
-        ipSig = objetoJSON.ip;
-        puertoSig = objetoJSON.port;
+    if (objetoJSON.missingId == idSig) {
+        idSig = objetoJSON.sigId;
+
+        if (idSig <= idTracker)
+            limiteMayor = 255;
+        else
+            limiteMayor = idTracker;
+
+        ipSig = objetoJSON.sigIP;
+        puertoSig = objetoJSON.sigPort;
         enviarUpdate();
     } else
         socket.send(JSON.stringify(objetoJSON), puertoSig, ipSig, (err) => {
