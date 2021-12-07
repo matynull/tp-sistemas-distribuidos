@@ -25,10 +25,18 @@ async function leerConsola() {
         rta = await pregunta();
         if (rta.toLowerCase() === 'status') {//Mostrar estado de todas las descargas
             console.log("******");
+            console.log("idTracker: " + idTracker);
+            console.log("puertoTracker: " + puertoTracker);
+
             console.log("Anterior: ID " + idAnt + " - IP " + ipAnt + ":" + puertoAnt);
             console.log("Siguiente: ID " + idSig + " - IP " + ipSig + ":" + puertoSig);
             console.log("Limite menor: " + limiteMenor);
             console.log("Limite mayor: " + limiteMayor);
+
+            console.log("Solo: " + solo);
+            console.log("BanderaJoin: " + banderaJoin);
+            console.log("HB Timer: " + timerHeartbeat);
+            console.log("HB Pausa: " + heartbeatPausa);
             console.log("******");
         } else if (rta.toLowerCase() === 'leave') {
             enviarLeave();
