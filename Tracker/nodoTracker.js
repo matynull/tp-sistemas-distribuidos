@@ -602,7 +602,6 @@ async function esperarHeartbeat() {
                 dhtTracker.agregarDHT(dhtAnt);
                 if (idSig == idAnt) {
                     solo = true;
-                    idAnt = idTracker;
                     banderaJoin = true;
                     puertoAnt = puertoTracker;
                     idSig = idTracker;
@@ -649,7 +648,8 @@ function enviarMissing() {
             if (err)
                 console.log("Hubo un error al enviar el mensaje Missing.");
         });
-    }
+    } else
+        idAnt = idTracker;
 }
 
 function missing(objetoJSON, info, tokens) {
