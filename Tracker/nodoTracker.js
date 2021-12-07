@@ -244,6 +244,7 @@ function configurar() {
     ipAnt = '0.0.0.0';
     limiteMenor = -1;
     limiteMayor = 255;
+    idTracker = 255;
     console.log("Intentando unirse a la red de Trackers...");
     socket.send(JSON.stringify(msg), puertoServer, ipServer, (err) => {
         if (err)
@@ -389,6 +390,7 @@ function join(objetoJSON, info, tokens) {
             idSig = idAnt;
             ipSig = ipAnt;
             puertoSig = puertoAnt;
+            console.log("Se aceptó la solicitud de unirse del Tracker " + idAnt);
         } else {
             let msg = {
                 route: '/joinResponse',
