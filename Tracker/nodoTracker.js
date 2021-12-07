@@ -238,7 +238,8 @@ function configurar() {
         route: '/join',
         id: '',
         trackerIP: '0.0.0.0',
-        trackerPort: puertoTracker
+        trackerPort: puertoTracker,
+        primero: -1
     };
     ipAnt = '0.0.0.0';
     limiteMenor = -1;
@@ -367,7 +368,7 @@ function count(msg, objetoJSON, info, tokens) {
 };
 
 function join(objetoJSON, info, tokens) {
-    if (limiteMenor < objetoJSON.id && objetoJSON.id <= limiteMayor) {
+    if (objetoJSON.id <= idTracker || objetoJSON.primero == idTracker) {
         if (banderaJoin) {
             banderaJoin = false;
             solo = false;
@@ -385,33 +386,41 @@ function join(objetoJSON, info, tokens) {
             idAnt = objetoJSON.id;
             ipAnt = objetoJSON.trackerIP;
             puertoAnt = objetoJSON.trackerPort;
+            idSig = idAnt;
+            ipSig = ipAnt;
+            puertoSig = puertoAnt;
+        } else {
+            let msg = {
+                route: '/joinResponse',
+                id: objetoJSON.id,
+                sigId: idTracker,
+                sigPort: puertoTracker,
+                antId: idAnt,
+                antIP: ipAnt,
+                antPort: puertoAnt
+            };
+            idAnt = objetoJSON.id;
+            ipAnt = objetoJSON.trackerIP;
+            puertoAnt = objetoJSON.trackerPort;
+
+            if (idAnt >= idTracker)
+                limiteMenor = -1;
+            else
+                limiteMenor = idAnt;
+
+            socket.send(JSON.stringify(msg), puertoAnt, ipAnt, (err) => {
+                if (err)
+                    console.log("Hubo un error al enviar joinResponse.");
+                else {
+                    timerHeartbeat = 5000;
+                    heartbeatPausa = false;
+                    console.log("Se aceptó la solicitud de unirse del Tracker " + idAnt);
+                }
+            });
         }
-        let msg = {
-            route: '/joinResponse',
-            id: objetoJSON.id,
-            sigId: idTracker,
-            sigPort: puertoTracker,
-            antId: idAnt,
-            antIP: ipAnt,
-            antPort: puertoAnt
-        };
-        ipAnt = objetoJSON.trackerIP;
-        puertoAnt = objetoJSON.trackerPort;
-        idAnt = objetoJSON.id;
-
-        if (idAnt >= idTracker)
-            limiteMenor = -1;
-        else
-            limiteMenor = idAnt;
-
-        socket.send(JSON.stringify(msg), puertoAnt, ipAnt, (err) => {
-            if (err)
-                console.log("Hubo un error al enviar joinResponse.");
-            timerHeartbeat = 5000;
-            heartbeatPausa = false;
-        });
-        console.log("Se aceptó la solicitud de unirse del Tracker " + idAnt);
     } else {
+        if (limiteMenor == -1)
+            objetoJSON.primero = idTracker;
         socket.send(JSON.stringify(objetoJSON), puertoSig, ipSig, (err) => {
             if (err)
                 console.log("Hubo un error al reenviar Join al siguiente tracker.");
@@ -433,8 +442,7 @@ function joinResponse(objetoJSON, info, tokens) {
     else
         limiteMayor = idTracker;
 
-    if (idTracker != idSig)
-        solo = false;
+    solo = false;
 
     let msg = {
         route: '/reqUpdate',
@@ -444,11 +452,12 @@ function joinResponse(objetoJSON, info, tokens) {
     socket.send(JSON.stringify(msg), puertoAnt, ipAnt, (err) => {
         if (err)
             console.log("Hubo un error al enviar el primer reqUpdate.");
+        else {
+            console.log("Tracker incorporado a la red.");
+            console.log("Tracker anterior: " + idAnt);
+            console.log("Tracker siguiente: " + idSig);
+        };
     });
-
-    console.log("Tracker incorporado a la red.");
-    console.log("Tracker anterior: " + idAnt);
-    console.log("Tracker siguiente: " + idSig);
 };
 
 function enviarUpdate() {
@@ -480,7 +489,6 @@ function update(objetoJSON, info, tokens) {
 };
 
 function reqUpdate(objetoJSON, info, tokens) {
-    timerHeartbeat = 5000;
     idSig = objetoJSON.id;
 
     if (idSig <= idTracker)
@@ -702,6 +710,6 @@ configurar();
 
 leerConsola();
 
-enviarHeartbeat();
+//enviarHeartbeat();
 
-esperarHeartbeat();
+//esperarHeartbeat();
