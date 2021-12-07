@@ -437,7 +437,7 @@ function joinResponse(objetoJSON, info, tokens) {
     ipSig = info.address;
     puertoSig = objetoJSON.sigPort;
     idAnt = objetoJSON.antId;
-    if (ipAnt === '0.0.0.0')
+    if (objetoJSON.antIP === '0.0.0.0')
         ipAnt = ipSig;
     else
         ipAnt = objetoJSON.antIP;
@@ -591,8 +591,9 @@ async function esperarHeartbeat() {
                     idAnt = idTracker;
                     banderaJoin = true;
                     puertoAnt = puertoTracker;
-                    idSig = idAnt;
-                    ipSig = ipAnt;
+                    idSig = idTracker;
+                    ipSig = '0.0.0.0';
+                    ipAnt = ipSig;
                     puertoSig = puertoAnt;
                     dhtAnt = new dht();
                     dhtAnt.agregarDHT(dhtTracker);
