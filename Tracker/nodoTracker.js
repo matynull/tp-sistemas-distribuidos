@@ -250,7 +250,7 @@ function configurar() {
         trackerPort: puertoTracker,
         primero: -1
     };
-    ipAnt = '0.0.0.0';
+    ipAnt = '0.0.0.1';
     limiteMenor = -1;
     limiteMayor = 255;
     idTracker = 255;
@@ -389,7 +389,7 @@ function join(objetoJSON, info, tokens) {
             else
                 limiteMenor = objetoJSON.id;
         }
-        if (ipAnt === '0.0.0.0') {
+        if (ipAnt === '0.0.0.1') {
             banderaJoin = true;
             solo = true;
             idTracker = objetoJSON.id;
