@@ -485,7 +485,8 @@ function update(objetoJSON, info, tokens) {
 
     ipAnt = info.address;
     puertoAnt = objetoJSON.antPort;
-    dhtAnt = objetoJSON.dht;
+    dhtAnt = new dht();
+    dhtAnt.agregarDHT(objetoJSON.dht);
     timerHeartbeat = 5000;
     heartbeatPausa = false;
 };
@@ -536,7 +537,8 @@ function leave(objetoJSON, info, tokens) {
         ipSig = ipAnt;
         puertoSig = puertoAnt;
         limiteMayor = 255;
-        dhtAnt = dht;
+        dhtAnt = new dht();
+        dhtAnt.agregarDHT(dhtTracker);
     } else {
         //Envía una solicitud de update al nuevo anterior
         idAnt = objetoJSON.antId;
@@ -587,7 +589,8 @@ async function esperarHeartbeat() {
                     idSig = idAnt;
                     ipSig = ipAnt;
                     puertoSig = puertoAnt;
-                    dhtAnt = dht;
+                    dhtAnt = new dht();
+                    dhtAnt.agregarDHT(dhtTracker);
                 } else {
                     enviarUpdate();
                     enviarMissing();
@@ -712,6 +715,6 @@ configurar();
 
 leerConsola();
 
-//enviarHeartbeat();
+enviarHeartbeat();
 
-//esperarHeartbeat();
+esperarHeartbeat();
