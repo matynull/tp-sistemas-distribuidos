@@ -613,10 +613,9 @@ async function esperarHeartbeat() {
                     dhtAnt.agregarDHT(dhtTracker);
                     limiteMenor = -1;
                     limiteMayor = 255;
-                } else {
+                } else
                     enviarUpdate();
-                    enviarMissing();
-                };
+                enviarMissing();
             };
         };
     };
@@ -638,17 +637,19 @@ function enviarMissing() {
             console.log("Hubo un error al enviar el mensaje Missing al Servidor.");
     });
 
-    let msg = {
-        route: '/missing',
-        missingId: idAnt,
-        sigId: idTracker,
-        sigIP: '0.0.0.0',
-        sigPort: puertoTracker
+    if (!solo) {
+        let msg = {
+            route: '/missing',
+            missingId: idAnt,
+            sigId: idTracker,
+            sigIP: '0.0.0.0',
+            sigPort: puertoTracker
+        }
+        socket.send(JSON.stringify(msg), puertoSig, ipSig, (err) => {
+            if (err)
+                console.log("Hubo un error al enviar el mensaje Missing.");
+        });
     }
-    socket.send(JSON.stringify(msg), puertoSig, ipSig, (err) => {
-        if (err)
-            console.log("Hubo un error al enviar el mensaje Missing.");
-    });
 }
 
 function missing(objetoJSON, info, tokens) {
