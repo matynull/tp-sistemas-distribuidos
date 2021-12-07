@@ -391,7 +391,7 @@ function join(objetoJSON, info, tokens) {
             idSig = idAnt;
             ipSig = ipAnt;
             puertoSig = puertoAnt;
-            console.log("Se aceptó la solicitud de unirse del Tracker " + idAnt);
+            console.log("Se agregó el Tracker con ID " + idTracker + " a la red.");
         } else {
             let msg = {
                 route: '/joinResponse',
@@ -437,7 +437,10 @@ function joinResponse(objetoJSON, info, tokens) {
     ipSig = info.address;
     puertoSig = objetoJSON.sigPort;
     idAnt = objetoJSON.antId;
-    ipAnt = objetoJSON.antIP;
+    if (ipAnt === '0.0.0.0')
+        ipAnt = ipSig;
+    else
+        ipAnt = objetoJSON.antIP;
     puertoAnt = objetoJSON.antPort;
 
     if (idSig <= idTracker)
@@ -532,14 +535,15 @@ function leave(objetoJSON, info, tokens) {
         solo = true;
         idAnt = objetoJSON.antId;
         ipAnt = objetoJSON.antIP;
+        banderaJoin = true;
         puertoAnt = objetoJSON.antPort;
-        limiteMenor = -1;
         idSig = idAnt;
         ipSig = ipAnt;
         puertoSig = puertoAnt;
-        limiteMayor = 255;
         dhtAnt = new dht();
         dhtAnt.agregarDHT(dhtTracker);
+        limiteMenor = -1;
+        limiteMayor = 255;
     } else {
         //Envía una solicitud de update al nuevo anterior
         idAnt = objetoJSON.antId;
@@ -585,13 +589,15 @@ async function esperarHeartbeat() {
                 if (idSig == idAnt) {
                     solo = true;
                     idAnt = idTracker;
-                    ipAnt = '0.0.0.0';
+                    banderaJoin = true;
                     puertoAnt = puertoTracker;
                     idSig = idAnt;
                     ipSig = ipAnt;
                     puertoSig = puertoAnt;
                     dhtAnt = new dht();
                     dhtAnt.agregarDHT(dhtTracker);
+                    limiteMenor = -1;
+                    limiteMayor = 255;
                 } else {
                     enviarUpdate();
                     enviarMissing();
@@ -620,8 +626,8 @@ function enviarMissing() {
 }
 
 function missing(objetoJSON, info, tokens) {
-    if (objetoJSON.ip === '0.0.0.0')
-        objetoJSON.ip = info.address;
+    if (objetoJSON.sigIP === '0.0.0.0')
+        objetoJSON.sigIP = info.address;
     if (objetoJSON.missingId == idSig) {
         idSig = objetoJSON.sigId;
 
