@@ -81,13 +81,23 @@ socket.on('message', function (msg, info) {
             idTracker = mensaje.id;
         }
         socket.send(JSON.stringify(mensaje), puertoTracker, ipTracker, (err) => {
-            if(err)
+            if (err)
                 console.log("Hubo un error al enviar Join al primer Tracker.");
         });
         if (mensaje.id < idTracker) {
             ipTracker = mensaje.trackerIP;
             puertoTracker = mensaje.trackerPort;
             idTracker = mensaje.id;
+        }
+    } else if (mensaje.route === '/leave') {
+        idTracker = mensaje.sigId;
+        ipTracker = mensaje.sigIP;
+        puertoTracker = mensaje.sigPort;
+    } else if (mensaje.route === '/missing') {
+        if (mensaje.missingId == idTracker) {
+            idTracker = mensaje.sigId;
+            ipTracker = info.address;
+            puertoTracker = mensaje.sigPort;
         }
     } else
         if (indice != -1) {

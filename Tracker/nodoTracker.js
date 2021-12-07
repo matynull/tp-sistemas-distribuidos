@@ -25,18 +25,10 @@ async function leerConsola() {
         rta = await pregunta();
         if (rta.toLowerCase() === 'status') {//Mostrar estado de todas las descargas
             console.log("******");
-            console.log("idTracker: " + idTracker);
-            console.log("puertoTracker: " + puertoTracker);
-
             console.log("Anterior: ID " + idAnt + " - IP " + ipAnt + ":" + puertoAnt);
             console.log("Siguiente: ID " + idSig + " - IP " + ipSig + ":" + puertoSig);
             console.log("Limite menor: " + limiteMenor);
             console.log("Limite mayor: " + limiteMayor);
-
-            console.log("Solo: " + solo);
-            console.log("BanderaJoin: " + banderaJoin);
-            console.log("HB Timer: " + timerHeartbeat);
-            console.log("HB Pausa: " + heartbeatPausa);
             console.log("******");
         } else if (rta.toLowerCase() === 'leave') {
             enviarLeave();
@@ -518,6 +510,20 @@ function reqUpdate(objetoJSON, info, tokens) {
 
 function enviarLeave() {
     console.log("Abandonando la red...")
+
+    if (limiteMenor == -1) {
+        let msgSv = {
+            route: '/leave',
+            sigId: idSig,
+            sigIP: ipSig,
+            sigPort: puertoSig
+        }
+        socket.send(JSON.stringify(msgSv), puertoServer, ipServer, (err) => {
+            if (err)
+                console.log("Hubo un error al enviar el mensaje Leave al Servidor.");
+        });
+    }
+
     let msg = {
         route: '/leave',
         dht: dhtTracker,
@@ -621,6 +627,17 @@ function heartbeat(objetoJSON, info, tokens) {
 };
 
 function enviarMissing() {
+    let msgSv = {
+        route: '/missing',
+        missingId: idAnt,
+        sigId: idTracker,
+        sigPort: puertoTracker
+    }
+    socket.send(JSON.stringify(msgSv), puertoServer, ipServer, (err) => {
+        if (err)
+            console.log("Hubo un error al enviar el mensaje Missing al Servidor.");
+    });
+
     let msg = {
         route: '/missing',
         missingId: idAnt,
